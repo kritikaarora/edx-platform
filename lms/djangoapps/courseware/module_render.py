@@ -15,15 +15,17 @@ from django.template.context_processors import csrf
 from django.core.exceptions import PermissionDenied
 from django.core.urlresolvers import reverse
 from django.http import Http404, HttpResponse, HttpResponseForbidden
+from django.utils.text import slugify
 from django.views.decorators.csrf import csrf_exempt
 from edx_proctoring.services import ProctoringService
+from edx_rest_framework_extensions.authentication import JwtAuthentication
 from opaque_keys import InvalidKeyError
 from opaque_keys.edx.keys import CourseKey, UsageKey
 from requests.auth import HTTPBasicAuth
-from rest_framework.views import APIView
 from rest_framework.authentication import SessionAuthentication
-from rest_framework_oauth.authentication import OAuth2Authentication
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.views import APIView
+from rest_framework_oauth.authentication import OAuth2Authentication
 from xblock.core import XBlock
 from xblock.django.request import django_to_webob_request, webob_to_django_response
 from xblock.exceptions import NoSuchHandlerError, NoSuchViewError
@@ -70,7 +72,6 @@ from student.roles import CourseBetaTesterRole
 from track import contexts
 from util import milestones_helpers
 from util.json_request import JsonResponse
-from django.utils.text import slugify
 from util.sandboxing import can_execute_unsafe_code, get_python_lib_zip
 from xblock_django.user_service import DjangoXBlockUserService
 from xmodule.contentstore.django import contentstore
@@ -932,7 +933,7 @@ class XblockCallbackView(APIView):
     not accessible by the user, or the module raises NotFoundError. If the
     module raises any other error, it will escape this function.
     """
-    authentication_classes = (SessionAuthentication, OAuth2Authentication,)
+    authentication_classes = (JwtAuthentication, SessionAuthentication, OAuth2Authentication,)
     permission_classes = (IsAuthenticated,)
 
     def get(self, request, course_id, usage_id, handler, suffix=None):
@@ -1086,17 +1087,27 @@ def _invoke_xblock_handler(request, course_id, usage_id, handler, suffix, course
 
 
 def _get_course_and_invoke_handler(request, course_id, usage_id, handler, suffix):
-    """ Gets the course object to pass as an additional argument to invoke the xblock handler. """
+    """
+    Gets the course object to pass as an additional argument to invoke the xblock handler.
+    """
+
+    # NOTE (CCB): Allow anonymous GET calls (e.g. for transcripts). Modifying this view is simpler than updating
+    # the XBlocks to use `handle_xblock_callback_noauth`...which is practically identical to this view.
+    if request.method != 'GET' and not request.user.is_authenticated():
+        return HttpResponseForbidden()
+
+    request.user.known = request.user.is_authenticated()
+
     try:
         course_key = CourseKey.from_string(course_id)
     except InvalidKeyError:
-        raise Http404("Invalid location")
+        raise Http404('{} is not a valid course key'.format(course_id))
 
     with modulestore().bulk_operations(course_key):
         try:
             course = modulestore().get_course(course_key)
         except ItemNotFoundError:
-            raise Http404("invalid location")
+            raise Http404('{} does not exist in the modulestore'.format(course_id))
 
         return _invoke_xblock_handler(request, course_id, usage_id, handler, suffix, course=course)
 

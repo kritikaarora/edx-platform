@@ -16,7 +16,6 @@ from django.contrib.auth.models import AnonymousUser
 from django.core.urlresolvers import reverse
 from django.http import Http404, HttpResponse
 from django.test.client import RequestFactory
-from rest_framework.test import APIRequestFactory
 from django.test.utils import override_settings
 from edx_proctoring.api import create_exam, create_exam_attempt, update_attempt_status
 from edx_proctoring.runtime import set_runtime_service
@@ -27,6 +26,7 @@ from mock import MagicMock, Mock, patch
 from nose.plugins.attrib import attr
 from opaque_keys.edx.keys import CourseKey, UsageKey
 from pyquery import PyQuery
+from rest_framework.test import APIRequestFactory
 from xblock.core import XBlock, XBlockAside
 from xblock.field_data import FieldData
 from xblock.fields import ScopeIds
@@ -479,7 +479,7 @@ class TestHandleXBlockCallback(SharedModuleStoreTestCase, LoginEnrollmentTestCas
         self.location = self.course_key.make_usage_key('chapter', 'Overview')
         self.mock_user = UserFactory.create()
         self.request_factory = RequestFactory()
-        self.drf_request_factory = APIRequestFactory()
+        self.api_request_factory = APIRequestFactory()
 
         # Construct a mock module for the modulestore to return
         self.mock_module = MagicMock()
@@ -508,7 +508,7 @@ class TestHandleXBlockCallback(SharedModuleStoreTestCase, LoginEnrollmentTestCas
         return mock_file
 
     def test_invalid_location(self):
-        request = self.drf_request_factory.post('dummy_url', data={'position': 1})
+        request = self.api_request_factory.post('dummy_url', data={'position': 1})
         request.user = self.mock_user
         view = XblockCallbackView.as_view()
         resp = view(
@@ -521,7 +521,7 @@ class TestHandleXBlockCallback(SharedModuleStoreTestCase, LoginEnrollmentTestCas
         self.assertEquals(resp.status_code, 404)
 
     def test_too_many_files(self):
-        request = self.drf_request_factory.post(
+        request = self.api_request_factory.post(
             'dummy_url',
             data={'file_id': (self._mock_file(), ) * (settings.MAX_FILEUPLOADS_PER_INPUT + 1)}
         )
@@ -542,7 +542,7 @@ class TestHandleXBlockCallback(SharedModuleStoreTestCase, LoginEnrollmentTestCas
 
     def test_too_large_file(self):
         inputfile = self._mock_file(size=1 + settings.STUDENT_FILEUPLOAD_MAX_SIZE)
-        request = self.drf_request_factory.post(
+        request = self.api_request_factory.post(
             'dummy_url',
             data={'file_id': inputfile}
         )
@@ -562,7 +562,7 @@ class TestHandleXBlockCallback(SharedModuleStoreTestCase, LoginEnrollmentTestCas
         )
 
     def test_xmodule_dispatch(self):
-        request = self.drf_request_factory.post('dummy_url', data={'position': 1})
+        request = self.api_request_factory.post('dummy_url', data={'position': 1})
         request.user = self.mock_user
         view = XblockCallbackView.as_view()
         response = view(
@@ -575,7 +575,7 @@ class TestHandleXBlockCallback(SharedModuleStoreTestCase, LoginEnrollmentTestCas
         self.assertIsInstance(response, HttpResponse)
 
     def test_bad_course_id(self):
-        request = self.drf_request_factory.post('dummy_url')
+        request = self.api_request_factory.post('dummy_url')
         request.user = self.mock_user
         view = XblockCallbackView.as_view()
         resp = view(
@@ -588,7 +588,7 @@ class TestHandleXBlockCallback(SharedModuleStoreTestCase, LoginEnrollmentTestCas
         self.assertEquals(resp.status_code, 404)
 
     def test_bad_location(self):
-        request = self.drf_request_factory.post('dummy_url')
+        request = self.api_request_factory.post('dummy_url')
         request.user = self.mock_user
         view = XblockCallbackView.as_view()
         resp = view(
@@ -601,7 +601,7 @@ class TestHandleXBlockCallback(SharedModuleStoreTestCase, LoginEnrollmentTestCas
         self.assertEquals(resp.status_code, 404)
 
     def test_bad_xmodule_dispatch(self):
-        request = self.drf_request_factory.post('dummy_url')
+        request = self.api_request_factory.post('dummy_url')
         request.user = self.mock_user
         view = XblockCallbackView.as_view()
         resp = view(
@@ -614,7 +614,7 @@ class TestHandleXBlockCallback(SharedModuleStoreTestCase, LoginEnrollmentTestCas
         self.assertEquals(resp.status_code, 404)
 
     def test_missing_handler(self):
-        request = self.drf_request_factory.post('dummy_url')
+        request = self.api_request_factory.post('dummy_url')
         request.user = self.mock_user
         view = XblockCallbackView.as_view()
         resp = view(
@@ -631,7 +631,7 @@ class TestHandleXBlockCallback(SharedModuleStoreTestCase, LoginEnrollmentTestCas
         course = CourseFactory.create()
         block = ItemFactory.create(category='stateless_scorer', parent=course)
 
-        request = self.drf_request_factory.post(
+        request = self.api_request_factory.post(
             'dummy_url',
             data=json.dumps({"grade": 0.75}),
             content_type='application/json'
@@ -663,14 +663,15 @@ class TestHandleXBlockCallback(SharedModuleStoreTestCase, LoginEnrollmentTestCas
         with completion_waffle.waffle().override(completion_waffle.ENABLE_COMPLETION_TRACKING, False):
             course = CourseFactory.create()
             block = ItemFactory.create(category='comp', parent=course)
-            request = self.request_factory.post(
+            request = self.api_request_factory.post(
                 '/',
                 data=json.dumps(data),
                 content_type='application/json',
             )
             request.user = self.mock_user
             with patch('lms.djangoapps.completion.models.BlockCompletionManager.submit_completion') as mock_complete:
-                render.handle_xblock_callback(
+                view = XblockCallbackView.as_view()
+                response = view(
                     request,
                     unicode(course.id),
                     quote_slashes(unicode(block.scope_ids.usage_id)),
@@ -696,7 +697,8 @@ class TestHandleXBlockCallback(SharedModuleStoreTestCase, LoginEnrollmentTestCas
                 content_type='application/json',
             )
             request.user = self.mock_user
-            response = render.handle_xblock_callback(
+            view = XblockCallbackView.as_view()
+            response = view(
                 request,
                 unicode(course.id),
                 quote_slashes(unicode(block.scope_ids.usage_id)),
@@ -723,7 +725,8 @@ class TestHandleXBlockCallback(SharedModuleStoreTestCase, LoginEnrollmentTestCas
             request.user.real_user.masquerade_settings = CourseMasquerade(course.id, user_name="jem")
             with patch('courseware.module_render.is_masquerading_as_specific_student') as mock_masq:
                 mock_masq.return_value = True
-                response = render.handle_xblock_callback(
+                view = XblockCallbackView.as_view()
+                response = view(
                     request,
                     unicode(course.id),
                     quote_slashes(unicode(block.scope_ids.usage_id)),
