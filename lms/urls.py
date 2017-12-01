@@ -13,13 +13,14 @@ from certificates import views as certificates_views
 from config_models.views import ConfigurationModelCurrentAPIView
 from courseware.masquerade import handle_ajax as courseware_masquerade_handle_ajax
 from courseware.module_render import (
-    handle_xblock_callback, handle_xblock_callback_noauth,
+    handle_xblock_callback_noauth,
     XblockCallbackView, xblock_view, xqueue_callback
 )
 from courseware.views import views as courseware_views
 from courseware.views.index import CoursewareIndex
 from courseware.views.views import CourseTabView, EnrollStaffView, StaticCourseTabView
 from debug import views as debug_views
+from django_cas import views as django_cas_views
 from django_comment_common.models import ForumsConfig
 from django_openid_auth import views as django_openid_auth_views
 from lms.djangoapps.discussion import views as discussion_views
