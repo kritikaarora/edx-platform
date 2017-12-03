@@ -707,6 +707,7 @@ class TestHandleXBlockCallback(SharedModuleStoreTestCase, LoginEnrollmentTestCas
             )
             self.assertEqual(response.status_code, 200)
             completion = BlockCompletion.objects.get(block_key=block.scope_ids.usage_id)
+            # FIXME the following line causes extra connection and crashes. TransactionManagementError: An error occurred in the current transaction. You can't execute queries until the end of the 'atomic' block.
             self.assertEqual(completion.completion, expected_completion)
 
     @XBlock.register_temp_plugin(StubCompletableXBlock, identifier='comp')

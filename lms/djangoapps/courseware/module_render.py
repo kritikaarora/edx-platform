@@ -934,7 +934,7 @@ class XblockCallbackView(APIView):
     module raises any other error, it will escape this function.
     """
     authentication_classes = (JwtAuthentication, SessionAuthentication, OAuth2Authentication,)
-    permission_classes = (IsAuthenticated,)
+    permission_classes = (IsAuthenticated,) # FIXME control this; it must allow some type of unauthenticated access
 
     def get(self, request, course_id, usage_id, handler, suffix=None):
         return _get_course_and_invoke_handler(request, course_id, usage_id, handler, suffix)

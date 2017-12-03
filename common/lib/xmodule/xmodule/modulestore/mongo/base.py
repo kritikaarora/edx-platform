@@ -1451,6 +1451,7 @@ class MongoModuleStore(ModuleStoreDraftAndPublished, ModuleStoreWriteBase, Mongo
         if parent is not None and 'detached' not in xblock._class_tags:
             # Originally added to support entrance exams (settings.FEATURES.get('ENTRANCE_EXAMS'))
             if kwargs.get('position') is None:
+                # FIXME AttributeError: 'ErrorDescriptorWithMixins' object has no attribute 'children'
                 parent.children.append(xblock.location)
             else:
                 parent.children.insert(kwargs.get('position'), xblock.location)
