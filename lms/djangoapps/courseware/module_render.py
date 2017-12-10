@@ -10,6 +10,7 @@ from functools import partial
 
 from django.conf import settings
 from django.contrib.auth.models import User
+from django.db import transaction
 from django.core.cache import cache
 from django.template.context_processors import csrf
 from django.core.exceptions import PermissionDenied
@@ -935,6 +936,13 @@ class XblockCallbackView(APIView):
     """
     authentication_classes = (JwtAuthentication, SessionAuthentication, OAuth2Authentication,)
     permission_classes = (IsAuthenticated,) # FIXME control this; it must allow some type of unauthenticated access
+
+    # This makes all operations atomic, and it's required because to work nicely with the try/catch that can appear 
+    # in tests.
+    # See https://docs.djangoproject.com/en/1.8/topics/db/transactions/#controlling-transactions-explicitly
+    @transaction.atomic
+    def dispatch(self, *args, **kwargs):
+        return super(XblockCallbackView, self).dispatch(*args, **kwargs)
 
     def get(self, request, course_id, usage_id, handler, suffix=None):
         return _get_course_and_invoke_handler(request, course_id, usage_id, handler, suffix)
