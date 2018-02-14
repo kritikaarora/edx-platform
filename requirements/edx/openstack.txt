@@ -2,5 +2,5 @@
 # Dependencies for OpenStack deployments.
 #
 
-# OpenStack swift backend for django storage API
-django-storage-swift==1.2.15
+# OpenStack swift backend for django storage API, with lazy connection loading
+git+https://github.com/open-craft/django-storage-swift.git@opencraft-release/ginkgo.1#egg=django-storage-swift==1.2.15
