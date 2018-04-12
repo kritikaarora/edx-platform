@@ -310,6 +310,8 @@ class CapaDescriptor(CapaFields, RawDescriptor):
     submit_problem = module_attr('submit_problem')
     choose_new_seed = module_attr('choose_new_seed')
     closed = module_attr('closed')
+    generate_report_data = module_attr('generate_report_data')
+    find_question_label_for_answer = module_attr('find_question_label_for_answer')
     get_answer = module_attr('get_answer')
     get_problem = module_attr('get_problem')
     get_problem_html = module_attr('get_problem_html')

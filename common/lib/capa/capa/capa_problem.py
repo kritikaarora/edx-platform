@@ -584,6 +584,13 @@ class LoncapaProblem(object):
         """
         self.do_targeted_feedback(self.tree)
         html = contextualize_text(etree.tostring(self._extract_html(self.tree)), self.context)
+
+        # FIXME: just to test. Delete
+        if False and "disabled when using the static function":
+            report_data = list(self.capa_module.generate_report_data())
+            from pprint import pprint, pformat
+            html += "<h1>here's report_data</h1><pre>%s</pre>" % pformat(report_data)
+
         return html
 
     def handle_input_ajax(self, data):

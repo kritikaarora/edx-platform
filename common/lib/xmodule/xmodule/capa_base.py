@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """Implements basics of Capa, including class CapaModule."""
 import cgi
 import copy
@@ -11,6 +12,7 @@ import struct
 import sys
 import traceback
 
+from lxml import etree
 from django.conf import settings
 # We don't want to force a dependency on datadog, so make the import conditional
 try:
@@ -23,7 +25,7 @@ from six import text_type
 
 from capa.capa_problem import LoncapaProblem, LoncapaSystem
 from capa.inputtypes import Status
-from capa.responsetypes import StudentInputError, ResponseError, LoncapaProblemError
+from capa.responsetypes import StudentInputError, ResponseError, LoncapaProblemError, registry
 from capa.util import convert_files_to_filenames, get_inner_html_from_xpath
 from xblock.fields import Boolean, Dict, Float, Integer, Scope, String, XMLString
 from xblock.scorable import ScorableXBlockMixin, Score
@@ -1158,6 +1160,8 @@ class CapaMixin(ScorableXBlockMixin, CapaFields):
           {'success' : 'correct' | 'incorrect' | AJAX alert msg string,
            'contents' : html}
         """
+        # import sys; sys.stdout = sys.__stdout__; import ipdb; ipdb.set_trace()
+
         event_info = dict()
         event_info['state'] = self.lcp.get_state()
         event_info['problem_id'] = text_type(self.location)
@@ -1696,3 +1700,138 @@ class CapaMixin(ScorableXBlockMixin, CapaFields):
         """
         lcp_score = self.lcp.calculate_score()
         return Score(raw_earned=lcp_score['score'], raw_possible=lcp_score['total'])
+
+    def find_question_label_for_answer(self, question_id):  # FIXME fix names (question_id? answer_id?)
+        """
+        Find correct question label! (instead of ID) This may require parsing the HTML. Or finding where the text is stored
+        # FIXME doc
+        """
+        # If a prompt is defined (with the syntax >>This is a question|And this is a tip<<),
+        # then the question text is available in problem_data
+        label = self.lcp.problem_data[question_id].get('label', None)
+        if label:
+            return str(label)
+
+        # FIXME if there are 2 successive dropdowns, the 2nd is finding the question from the 1st one. Fix
+
+        xml_elems = [elem for elem, data in self.lcp.responder_answers.iteritems() if question_id in data]
+        assert len(xml_elems) == 1, (len(xml_elems), xml_elems, question_id, list(self.lcp.responder_answers.iteritems()))
+
+        # Get the element that probably contains the question text
+        questiontext_elem = xml_elems[0].getprevious()
+
+        # Go backwards, skip <description> and other responses, because they don't contain the question
+        skip_elems = registry.registered_tags() + ['description']
+        while questiontext_elem is not None and questiontext_elem.tag in skip_elems:
+            questiontext_elem = questiontext_elem.getprevious()
+
+        if questiontext_elem is not None and questiontext_elem.tag in ['p', 'label']:
+            return questiontext_elem.text
+        else:
+            return None
+
+    # FIXME delete course_key and block_key parameters (they are implicit)
+    # FIXME delete get_block parameter (unneeded?)
+    # FIXME implement filter by user_ids and match_string
+    # v1:
+    # def generate_report_data(self, course_key=None, block_key=None, get_block=None, user_ids=None, match_string=None):
+    # v2 (static):
+    # FIXME make static so that it can run in a smaller runtime, with ~~~~ only a CapaDescriptor, see e.g. CapaDescriptor.max_score about how to build such runtime. Maybe move to CapaDescriptor
+    @staticmethod
+    def generate_report_data(descriptor):
+        """
+        Return a list of student responses to this block in a readable way.
+        Each call returns a tuple like: ("username", {"Question": "2 + 2 equals how much?", "Answer": "Four"})
+        """
+
+        # import sys; sys.stdout = sys.__stdout__; import ipdb; ipdb.set_trace()
+
+        if True and "testing with static":
+            # import sys; sys.stdout = sys.__stdout__; import ipdb; ipdb.set_trace()
+            self = descriptor
+
+            # from xmodule.tests import DATA_DIR, get_test_system, get_test_descriptor_system
+            # self.xmodule_runtime = get_test_system()
+            # assert self.xmodule_runtime
+
+        if self.category != 'problem':
+            raise NotImplementedError()
+        # FIXME reimplement without using self.lcp (to make it work with the static one)
+        if False and 'customresponse' in [elem.tag for elem in self.lcp.responder_answers.keys()]:
+            raise NotImplementedError("Not implemented for custom response problems "
+                                      "(like drag&drop, chemical equations etc.)")
+
+        # FIXME move import (but if moved to be too early in the imports, then it fails)
+        from courseware.user_state_client import DjangoXBlockUserStateClient
+
+        # FIXME move to the right place (init just once)
+        user_state_client = DjangoXBlockUserStateClient()
+
+        # FIXME remove these tests:
+        # from opaque_keys.edx.keys import CourseKey, UsageKey
+        # block_key = UsageKey.from_string('block-v1:edX+DemoX+Demo_Course+type@problem+block@a0effb954cca4759994f1ac9e9434bf4')
+
+        block_key = self.location
+
+        # FIXME needed?
+        try:
+            tree = etree.XML(self.data)
+        except etree.XMLSyntaxError:
+            log.error('Error parsing problem types from xml for capa module {}'.format(self.display_name))
+            return
+
+        # import sys; sys.stdout = sys.__stdout__; import ipdb; ipdb.set_trace()
+
+        print("I am seeing the following user_state:", user_state_client.iter_all_for_block(block_key))
+        print("Listed:", list(user_state_client.iter_all_for_block(block_key)))
+
+        for user_state in user_state_client.iter_all_for_block(block_key):
+
+            if 'student_answers' not in user_state.state:
+                continue
+
+            student_answers = user_state.state['student_answers']
+
+            for question_id, answer in student_answers.iteritems():
+                # import sys; sys.stdout = sys.__stdout__; import ipdb; ipdb.set_trace()
+
+                # special debug. FIXME delete
+                # if question_id in ['98e6a8e915904d5389821a94e48babcf_7_1' ]:
+                #     import sys; sys.stdout = sys.__stdout__; import ipdb; ipdb.set_trace()
+
+                # Take the question text from the preceding paragraph or label
+                question_column = "self.find_question_label_for_answer(question_id).    FIXME redo with the static function"
+                if not question_column:
+                    # No question name available. Use question number.
+                    # For instance 'd2e35c1d294b4ba0b3b1048615605d2a_2_1' contains 2, which is used in question number 1
+                    question_nr = int(question_id.split('_')[1])-1
+
+                    question_column = "Question %i" % question_nr
+
+                    # FIXME debug only: remove
+                    # question_column = "Question %i (%s)" % (question_nr, question_id)
+
+                answer_with_names = "FIXME: redo this part to get the answer, so that it can get the right answers with the static function"
+                # import sys; sys.stdout = sys.__stdout__; import ipdb; ipdb.set_trace()
+                if False and "disabled when using static":
+                    metad = self.get_submission_metadata({question_id: answer}, self.lcp.correct_map)
+
+                    assert question_id in metad
+                    answer_with_names = metad[question_id]['answer']
+                    if type(answer_with_names) == list:
+                        answer_with_names = ",".join(answer_with_names)
+                answer_column = answer_with_names
+
+                # FIXME delete this (original answer)
+                # answer_column = "".join(answer)
+
+                xml_string = etree.tostring(tree, pretty_print=True)
+                xml_string = xml_string.replace("<", "&lt;")
+                xml_string = xml_string.replace(">", "&gt;")
+                xml_string = xml_string.replace("\n", "<br />")
+                # print(xml_string)
+                yield (user_state.username, {
+                    "Question": question_column, "Answer": answer_column,
+                    # "BTW metadata": metad,
+                    # "BTW here's the XML which contains the question too": xml_string,
+                })
