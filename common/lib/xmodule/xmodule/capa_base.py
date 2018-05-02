@@ -1737,16 +1737,21 @@ class CapaMixin(ScorableXBlockMixin, CapaFields):
     # def generate_report_data(self, course_key=None, block_key=None, get_block=None, user_ids=None, match_string=None):
     # v2 (static):
     # FIXME make static so that it can run in a smaller runtime, with ~~~~ only a CapaDescriptor, see e.g. CapaDescriptor.max_score about how to build such runtime. Maybe move to CapaDescriptor
-    @staticmethod
-    def generate_report_data(descriptor):
+    # @staticmethod
+    # def generate_report_data(descriptor):
+    # v3: non-static, and receive user_state_client as parameter
+    def generate_report_data(self, user_state_iterator, limit_responses=5000):
         """
         Return a list of student responses to this block in a readable way.
-        Each call returns a tuple like: ("username", {"Question": "2 + 2 equals how much?", "Answer": "Four"})
+        Each call returns a tuple like: ("username", {"Question": "2 + 2 equals how many?", "Answer": "Four"})
         """
 
         # import sys; sys.stdout = sys.__stdout__; import ipdb; ipdb.set_trace()
 
-        if True and "testing with static":
+        if limit_responses:
+            raise NotImplementedError("implement a limit")
+
+        if False and "testing with static":
             # import sys; sys.stdout = sys.__stdout__; import ipdb; ipdb.set_trace()
             self = descriptor
 
@@ -1761,12 +1766,6 @@ class CapaMixin(ScorableXBlockMixin, CapaFields):
             raise NotImplementedError("Not implemented for custom response problems "
                                       "(like drag&drop, chemical equations etc.)")
 
-        # FIXME move import (but if moved to be too early in the imports, then it fails)
-        from courseware.user_state_client import DjangoXBlockUserStateClient
-
-        # FIXME move to the right place (init just once)
-        user_state_client = DjangoXBlockUserStateClient()
-
         # FIXME remove these tests:
         # from opaque_keys.edx.keys import CourseKey, UsageKey
         # block_key = UsageKey.from_string('block-v1:edX+DemoX+Demo_Course+type@problem+block@a0effb954cca4759994f1ac9e9434bf4')
@@ -1780,15 +1779,67 @@ class CapaMixin(ScorableXBlockMixin, CapaFields):
             log.error('Error parsing problem types from xml for capa module {}'.format(self.display_name))
             return
 
+
+        from capa.capa_problem import LoncapaProblem, LoncapaSystem
+        capa_system = LoncapaSystem(
+            ajax_url=None,
+            anonymous_student_id=None,
+            cache=None,
+            can_execute_unsafe_code=None,
+            get_python_lib_zip=None,
+            DEBUG=None,
+            filestore=self.runtime.resources_fs,
+            i18n=self.runtime.service(self, "i18n"),
+            node_path=None,
+            render_template=None,
+            seed=1,
+            STATIC_URL=None,
+            xqueue=None,
+            matlab_api_key=None,
+        )
+
         # import sys; sys.stdout = sys.__stdout__; import ipdb; ipdb.set_trace()
 
-        print("I am seeing the following user_state:", user_state_client.iter_all_for_block(block_key))
-        print("Listed:", list(user_state_client.iter_all_for_block(block_key)))
+        # FIXME remove this step
+        states = list(user_state_iterator)
+        print("I am seeing the following user_state:", states)
 
-        for user_state in user_state_client.iter_all_for_block(block_key):
+        for user_state in states:
 
             if 'student_answers' not in user_state.state:
                 continue
+
+            print("This part is new. FIXME test it")
+            # import sys; sys.stdout = sys.__stdout__; import ipdb; ipdb.set_trace()
+
+            #capa_system.anonymous_student_id = # FIXME re-set the anonymous ID to this student's anonymous ID somehow?
+            lcp = LoncapaProblem(
+                problem_text=self.data,
+                id=self.location.html_id(),
+                capa_system=capa_system,
+                capa_module=self,
+                state={
+                    'done': user_state.state.get('done'),
+                    'correct_map': user_state.state.get('correct_map'),
+                    'student_answers': user_state.state.get('student_answers'),
+                    'has_saved_answers': user_state.state.get('has_saved_answers'),
+                    'input_state': user_state.state.get('input_state'),
+                    'seed': user_state.state.get('seed'),
+                },
+                seed=user_state.state.get('seed'),
+                extract_tree=False,
+            )
+            print("This part is also new. FIXME test it")
+            for question_id, answers in lcp.get_question_answers().items():
+                problem_data = lcp.problem_data[question_id]
+                print("On question {question_id} ({description}) user {username} answered {answer}".format(
+                    question_id=question_id,
+                    description=problem_data.get('label', problem_data.get('descriptions').values()[0].striptags()),
+                    username=user_state.username,
+                    answer=answers[0],
+                ))
+            return
+
 
             student_answers = user_state.state['student_answers']
 
@@ -1813,7 +1864,7 @@ class CapaMixin(ScorableXBlockMixin, CapaFields):
 
                 answer_with_names = "FIXME: redo this part to get the answer, so that it can get the right answers with the static function"
                 # import sys; sys.stdout = sys.__stdout__; import ipdb; ipdb.set_trace()
-                if False and "disabled when using static":
+                if True and "disabled when using static":
                     metad = self.get_submission_metadata({question_id: answer}, self.lcp.correct_map)
 
                     assert question_id in metad

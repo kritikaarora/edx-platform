@@ -1177,6 +1177,8 @@ class XModuleDescriptor(HTMLSnippet, ResourceTemplates, XModuleMixin):
 
         if self.xmodule_runtime is None:
             # raise NotImplementedError("No code necessary here. This should not fail. Create a runtime and add it to the CapaDescriptor as .xmodule_runtime so that this doesn't fail.   FIXME: remove this line")
+            import sys; sys.stdout = sys.__stdout__; import ipdb; ipdb.set_trace()
+
             raise UndefinedContext()
         assert self.xmodule_runtime.error_descriptor_class is not None
         if self.xmodule_runtime.xmodule_instance is None:
