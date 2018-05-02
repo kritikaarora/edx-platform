@@ -17,6 +17,7 @@ from six import text_type
 
 from course_blocks.api import get_course_blocks
 from courseware.courses import get_course_by_id
+from courseware.user_state_client import DjangoXBlockUserStateClient
 from instructor_analytics.basic import list_problem_responses
 from instructor_analytics.csvs import format_dictlist
 from lms.djangoapps.certificates.models import CertificateWhitelist, GeneratedCertificate, certificate_info_for_user
@@ -604,35 +605,33 @@ class ProblemResponses(object):
         student_data = []
         max_count = settings.FEATURES.get('MAX_PROBLEM_RESPONSES_COUNT')
 
-        for title, path, block_key in cls._build_problem_list(course_blocks, problem_key):
-            # Chapter and sequential blocks are filtered out since they include state
-            # which isn't useful for this report.
-            if block_key.block_type in ('sequential', 'chapter'):
-                continue
+        store = modulestore()
+        user_state_client = DjangoXBlockUserStateClient()
 
-            block = course_blocks.get_xblock(block_key)
-            generate_report_data = None
+        with store.bulk_operations(course_id):
+            for title, path, block_key in cls._build_problem_list(course_blocks, problem_key):
+                # Chapter and sequential blocks are filtered out since they include state
+                # which isn't useful for this report.
+                if block_key.block_type in ('sequential', 'chapter'):
+                    continue
 
-            if hasattr(block, 'generate_report_data'):
-                generate_report_data = block.generate_report_data
-            elif hasattr(block, 'module_class') and hasattr(block.module_class, 'generate_report_data'):
-                generate_report_data = block.module_class.generate_report_data
+                block = store.get_item(block_key)
 
-            if generate_report_data is not None:
-                # TODO: potential API
-                responses = generate_report_data(block, limit_responses=max_count)
-            else:
-                responses = list_problem_responses(course_id, block_key, max_count)
+                if hasattr(block, 'generate_report_data'):
+                    user_state_iterator = user_state_client.iter_all_for_block(block_key)
+                    responses = block.generate_report_data(user_state_iterator, limit_responses=max_count)
+                else:
+                    responses = list_problem_responses(course_id, block_key, max_count)
 
-            student_data += responses
-            for response in responses:
-                response['title'] = title
-                response['location'] = ' > '.join(path)
-                response['block_key'] = str(block_key)
-            if max_count is not None:
-                max_count -= len(responses)
-                if max_count <= 0:
-                    break
+                student_data += responses
+                for response in responses:
+                    response['title'] = title
+                    response['location'] = ' > '.join(path)
+                    response['block_key'] = str(block_key)
+                if max_count is not None:
+                    max_count -= len(responses)
+                    if max_count <= 0:
+                        break
 
         return student_data
 
