@@ -303,6 +303,165 @@ class CapaDescriptor(CapaFields, RawDescriptor):
         )
         return lcp.get_max_score()
 
+    # FIXME delete course_key and block_key parameters (they are implicit)
+    # FIXME delete get_block parameter (unneeded?)
+    # FIXME implement filter by user_ids and match_string
+    # v1:
+    # def generate_report_data(self, course_key=None, block_key=None, get_block=None, user_ids=None, match_string=None):
+    # v2 (static):
+    # FIXME make static so that it can run in a smaller runtime, with ~~~~ only a CapaDescriptor, see e.g. CapaDescriptor.max_score about how to build such runtime. Maybe move to CapaDescriptor
+    # @staticmethod
+    # def generate_report_data(descriptor):
+    # v3: non-static, and receive user_state_client as parameter
+    def generate_report_data(self, user_state_iterator, limit_responses=5000):
+        """
+        Return a list of student responses to this block in a readable way.
+        Each call returns a tuple like: ("username", {"Question": "2 + 2 equals how many?", "Answer": "Four"})
+        """
+
+        # import sys; sys.stdout = sys.__stdout__; import ipdb; ipdb.set_trace()
+
+        if limit_responses:
+            pass
+            # raise NotImplementedError("implement a limit")
+
+        if False and "testing with static":
+            # import sys; sys.stdout = sys.__stdout__; import ipdb; ipdb.set_trace()
+            self = descriptor
+
+            # from xmodule.tests import DATA_DIR, get_test_system, get_test_descriptor_system
+            # self.xmodule_runtime = get_test_system()
+            # assert self.xmodule_runtime
+
+        if self.category != 'problem':
+            raise NotImplementedError()
+        # FIXME reimplement without using self.lcp (to make it work with the static one)
+        if False and 'customresponse' in [elem.tag for elem in self.lcp.responder_answers.keys()]:
+            raise NotImplementedError("Not implemented for custom response problems "
+                                      "(like drag&drop, chemical equations etc.)")
+
+        # FIXME remove these tests:
+        # from opaque_keys.edx.keys import CourseKey, UsageKey
+        # block_key = UsageKey.from_string('block-v1:edX+DemoX+Demo_Course+type@problem+block@a0effb954cca4759994f1ac9e9434bf4')
+
+        block_key = self.location
+
+        # FIXME needed?
+        try:
+            tree = etree.XML(self.data)
+        except etree.XMLSyntaxError:
+            log.error('Error parsing problem types from xml for capa module {}'.format(self.display_name))
+            return
+
+
+        from capa.capa_problem import LoncapaProblem, LoncapaSystem
+        capa_system = LoncapaSystem(
+            ajax_url=None,
+            anonymous_student_id=None,
+            cache=None,
+            can_execute_unsafe_code=None,
+            get_python_lib_zip=None,
+            DEBUG=None,
+            filestore=self.runtime.resources_fs,
+            i18n=self.runtime.service(self, "i18n"),
+            node_path=None,
+            render_template=None,
+            seed=1,
+            STATIC_URL=None,
+            xqueue=None,
+            matlab_api_key=None,
+        )
+
+        # import sys; sys.stdout = sys.__stdout__; import ipdb; ipdb.set_trace()
+
+        # FIXME remove this step
+        states = list(user_state_iterator)
+        print("I am seeing the following user_state:", states)
+
+        for user_state in states:
+
+            if 'student_answers' not in user_state.state:
+                continue
+
+            print("This part is new. FIXME test it")
+            # import sys; sys.stdout = sys.__stdout__; import ipdb; ipdb.set_trace()
+
+            #capa_system.anonymous_student_id = # FIXME re-set the anonymous ID to this student's anonymous ID somehow?
+            lcp = LoncapaProblem(
+                problem_text=self.data,
+                id=self.location.html_id(),
+                capa_system=capa_system,
+                capa_module=self,
+                state={
+                    'done': user_state.state.get('done'),
+                    'correct_map': user_state.state.get('correct_map'),
+                    'student_answers': user_state.state.get('student_answers'),
+                    'has_saved_answers': user_state.state.get('has_saved_answers'),
+                    'input_state': user_state.state.get('input_state'),
+                    'seed': user_state.state.get('seed'),
+                },
+                seed=user_state.state.get('seed'),
+                extract_tree=False,
+            )
+            print("This part is also new. FIXME test it")
+            for question_id, answers in lcp.get_question_answers().items():
+                problem_data = lcp.problem_data[question_id]
+                print("On question {question_id} ({description}) user {username} answered {answer}".format(
+                    question_id=question_id,
+                    description=problem_data.get('label', problem_data.get('descriptions').values()[0].striptags()),
+                    username=user_state.username,
+                    answer=answers[0],
+                ))
+            return
+
+
+            student_answers = user_state.state['student_answers']
+
+            for question_id, answer in student_answers.iteritems():
+                # import sys; sys.stdout = sys.__stdout__; import ipdb; ipdb.set_trace()
+
+                # special debug. FIXME delete
+                # if question_id in ['98e6a8e915904d5389821a94e48babcf_7_1' ]:
+                #     import sys; sys.stdout = sys.__stdout__; import ipdb; ipdb.set_trace()
+
+                # Take the question text from the preceding paragraph or label
+                question_column = "self.find_question_label_for_answer(question_id).    FIXME redo with the static function"
+                if not question_column:
+                    # No question name available. Use question number.
+                    # For instance 'd2e35c1d294b4ba0b3b1048615605d2a_2_1' contains 2, which is used in question number 1
+                    question_nr = int(question_id.split('_')[1])-1
+
+                    question_column = "Question %i" % question_nr
+
+                    # FIXME debug only: remove
+                    # question_column = "Question %i (%s)" % (question_nr, question_id)
+
+                answer_with_names = "FIXME: redo this part to get the answer, so that it can get the right answers with the static function"
+                # import sys; sys.stdout = sys.__stdout__; import ipdb; ipdb.set_trace()
+                if True and "disabled when using static":
+                    metad = self.get_submission_metadata({question_id: answer}, self.lcp.correct_map)
+
+                    assert question_id in metad
+                    answer_with_names = metad[question_id]['answer']
+                    if type(answer_with_names) == list:
+                        answer_with_names = ",".join(answer_with_names)
+                answer_column = answer_with_names
+
+                # FIXME delete this (original answer)
+                # answer_column = "".join(answer)
+
+                xml_string = etree.tostring(tree, pretty_print=True)
+                xml_string = xml_string.replace("<", "&lt;")
+                xml_string = xml_string.replace(">", "&gt;")
+                xml_string = xml_string.replace("\n", "<br />")
+                # print(xml_string)
+                yield (user_state.username, {
+                    "Question": question_column, "Answer": answer_column,
+                    # "BTW metadata": metad,
+                    # "BTW here's the XML which contains the question too": xml_string,
+                })
+
+
     # Proxy to CapaModule for access to any of its attributes
     answer_available = module_attr('answer_available')
     submit_button_name = module_attr('submit_button_name')
@@ -310,7 +469,7 @@ class CapaDescriptor(CapaFields, RawDescriptor):
     submit_problem = module_attr('submit_problem')
     choose_new_seed = module_attr('choose_new_seed')
     closed = module_attr('closed')
-    generate_report_data = module_attr('generate_report_data')
+    # generate_report_data = module_attr('generate_report_data')
     find_question_label_for_answer = module_attr('find_question_label_for_answer')
     get_answer = module_attr('get_answer')
     get_problem = module_attr('get_problem')
