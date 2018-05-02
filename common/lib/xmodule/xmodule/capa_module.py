@@ -401,7 +401,7 @@ class CapaDescriptor(CapaFields, RawDescriptor):
                     'seed': user_state.state.get('seed'),
                 },
                 seed=user_state.state.get('seed'),
-                extract_tree=False,
+                extract_tree=False,  # FIXME does this need a rebase to work?
             )
             print("This part is also new. FIXME test it")
             for question_id, answers in lcp.get_question_answers().items():
