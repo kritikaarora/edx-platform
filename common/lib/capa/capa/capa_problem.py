@@ -470,7 +470,7 @@ class LoncapaProblem(object):
         """
         # dict of (id, correct_answer)
         answer_map = dict()
-        import sys; sys.stdout = sys.__stdout__; import ipdb; ipdb.set_trace()
+        # import sys; sys.stdout = sys.__stdout__; import ipdb; ipdb.set_trace()
 
         for response in self.responders.keys():
             results = self.responder_answers[response]

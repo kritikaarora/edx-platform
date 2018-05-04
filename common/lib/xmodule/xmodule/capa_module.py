@@ -413,18 +413,33 @@ class CapaDescriptor(CapaFields, RawDescriptor):
             )
             print("This part is also new. FIXME test it")
             for question_id, answers in lcp.get_question_answers().items():
+                if '_solution_' in question_id:
+                    # FIXME I think this is not really a question/answer and can be skipped. But verify
+                    continue
+                elif question_id not in lcp.problem_data:
+                    print("FIXME debug this case. Maybe it happened only with the _solution_ scenario")
+                    print(question_id)
+                    print(lcp.problem_data)
+                    import sys; sys.stdout = sys.__stdout__; import ipdb; ipdb.set_trace()
+
                 assert question_id in lcp.problem_data
                 problem_data = lcp.problem_data[question_id]
-                if problem_data.get('label', problem_data.get('descriptions').values()):
-                    question_text = problem_data.get('label', problem_data.get('descriptions').values()[0].striptags())
+                question_tag = problem_data.get('label', problem_data.get('descriptions').values())  # FIXME rename
+                print("tag", question_tag)
+                if question_tag:
+                    question_text = question_tag[0].striptags()
                 else:
                     question_text = "FIXME get question by parsing the XML"
+
+                answer_text = answers[0]
+                # FIXME get the right answers by using more code like the code below
+                import sys; sys.stdout = sys.__stdout__; import ipdb; ipdb.set_trace()
 
                 print("On question {question_id} ({description}) user {username} answered {answer}".format(
                     question_id=question_id,
                     description=question_text,
                     username=user_state.username,
-                    answer=answers[0],
+                    answer=answer_text,
                 ))
             return
 
