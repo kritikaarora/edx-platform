@@ -128,7 +128,7 @@ class LoncapaProblem(object):
     Main class for capa Problems.
     """
     def __init__(self, problem_text, id, capa_system, capa_module,  # pylint: disable=redefined-builtin
-                 state=None, seed=None, minimal_init=False):
+                 state=None, seed=None, minimal_init=False, extract_tree=True):
         """
         Initializes capa Problem.
 
@@ -147,6 +147,8 @@ class LoncapaProblem(object):
                 - `done` (bool) indicates whether or not this problem is considered done
                 - `input_state` (dict) maps input_id to a dictionary that holds the state for that input
             seed (int): random number generator seed.
+            minimal_init (bool): whether to skip pre-processing student answers
+            extract_tree (bool): whether to parse the problem XML and store the HTML
 
         """
 
@@ -212,7 +214,8 @@ class LoncapaProblem(object):
                 if hasattr(response, 'late_transforms'):
                     response.late_transforms(self)
 
-            self.extracted_tree = self._extract_html(self.tree)
+            if extract_tree:
+                self.extracted_tree = self._extract_html(self.tree)
 
     def make_xml_compatible(self, tree):
         """
@@ -467,6 +470,8 @@ class LoncapaProblem(object):
         """
         # dict of (id, correct_answer)
         answer_map = dict()
+        import sys; sys.stdout = sys.__stdout__; import ipdb; ipdb.set_trace()
+
         for response in self.responders.keys():
             results = self.responder_answers[response]
             answer_map.update(results)

@@ -313,17 +313,23 @@ class CapaDescriptor(CapaFields, RawDescriptor):
     # @staticmethod
     # def generate_report_data(descriptor):
     # v3: non-static, and receive user_state_client as parameter
-    def generate_report_data(self, user_state_iterator, limit_responses=5000):
+    def generate_report_data(self, user_state_iterator, limit_responses=None):
         """
         Return a list of student responses to this block in a readable way.
-        Each call returns a tuple like: ("username", {"Question": "2 + 2 equals how many?", "Answer": "Four"})
+
+        Arguments:
+            user_state_iterator: iterator over UserStateClient objects.
+                E.g. the result of user_state_client.iter_all_for_block(block_key)
+
+            limit_responses (int/None): maximum number of responses to include.
+                Set to None (default) to include all.
+
+        Returns:
+            each call returns a tuple like:
+            ("username", {"Question": "2 + 2 equals how many?", "Answer": "Four"})
         """
 
         # import sys; sys.stdout = sys.__stdout__; import ipdb; ipdb.set_trace()
-
-        if limit_responses:
-            pass
-            # raise NotImplementedError("implement a limit")
 
         if False and "testing with static":
             # import sys; sys.stdout = sys.__stdout__; import ipdb; ipdb.set_trace()
@@ -378,13 +384,15 @@ class CapaDescriptor(CapaFields, RawDescriptor):
         states = list(user_state_iterator)
         print("I am seeing the following user_state:", states)
 
-        for user_state in states:
+        for idx, user_state in enumerate(states):
+
+            if limit_responses and idx >= limit_responses:
+                break
 
             if 'student_answers' not in user_state.state:
                 continue
 
             print("This part is new. FIXME test it")
-            # import sys; sys.stdout = sys.__stdout__; import ipdb; ipdb.set_trace()
 
             #capa_system.anonymous_student_id = # FIXME re-set the anonymous ID to this student's anonymous ID somehow?
             lcp = LoncapaProblem(
@@ -401,19 +409,24 @@ class CapaDescriptor(CapaFields, RawDescriptor):
                     'seed': user_state.state.get('seed'),
                 },
                 seed=user_state.state.get('seed'),
-                extract_tree=False,  # FIXME does this need a rebase to work?
+                extract_tree=False,
             )
             print("This part is also new. FIXME test it")
             for question_id, answers in lcp.get_question_answers().items():
+                assert question_id in lcp.problem_data
                 problem_data = lcp.problem_data[question_id]
+                if problem_data.get('label', problem_data.get('descriptions').values()):
+                    question_text = problem_data.get('label', problem_data.get('descriptions').values()[0].striptags())
+                else:
+                    question_text = "FIXME get question by parsing the XML"
+
                 print("On question {question_id} ({description}) user {username} answered {answer}".format(
                     question_id=question_id,
-                    description=problem_data.get('label', problem_data.get('descriptions').values()[0].striptags()),
+                    description=question_text,
                     username=user_state.username,
                     answer=answers[0],
                 ))
             return
-
 
             student_answers = user_state.state['student_answers']
 
@@ -482,6 +495,7 @@ class CapaDescriptor(CapaFields, RawDescriptor):
     has_submitted_answer = module_attr('has_submitted_answer')
     is_attempted = module_attr('is_attempted')
     is_correct = module_attr('is_correct')
+    # correctness_available = module_attr('correctness_available')     # FIXME remove
     is_past_due = module_attr('is_past_due')
     is_submitted = module_attr('is_submitted')
     lcp = module_attr('lcp')
