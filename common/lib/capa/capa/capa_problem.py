@@ -470,7 +470,6 @@ class LoncapaProblem(object):
         """
         # dict of (id, correct_answer)
         answer_map = dict()
-
         for response in self.responders.keys():
             results = self.responder_answers[response]
             answer_map.update(results)
