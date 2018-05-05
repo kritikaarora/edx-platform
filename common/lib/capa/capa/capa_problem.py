@@ -470,7 +470,6 @@ class LoncapaProblem(object):
         """
         # dict of (id, correct_answer)
         answer_map = dict()
-        # import sys; sys.stdout = sys.__stdout__; import ipdb; ipdb.set_trace()
 
         for response in self.responders.keys():
             results = self.responder_answers[response]
@@ -589,7 +588,6 @@ class LoncapaProblem(object):
         """
         self.do_targeted_feedback(self.tree)
         html = contextualize_text(etree.tostring(self._extract_html(self.tree)), self.context)
-
         return html
 
     def handle_input_ajax(self, data):

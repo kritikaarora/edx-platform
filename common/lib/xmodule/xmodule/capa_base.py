@@ -1168,7 +1168,6 @@ class CapaMixin(ScorableXBlockMixin, CapaFields):
           {'success' : 'correct' | 'incorrect' | AJAX alert msg string,
            'contents' : html}
         """
-        # import sys; sys.stdout = sys.__stdout__; import ipdb; ipdb.set_trace()
 
         event_info = dict()
         event_info['state'] = self.lcp.get_state()
