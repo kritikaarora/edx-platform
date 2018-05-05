@@ -411,6 +411,43 @@ class CapaDescriptor(CapaFields, RawDescriptor):
                 seed=user_state.state.get('seed'),
                 extract_tree=False,
             )
+
+            def find_question_label_for_answer(question_id): # FIXME fix names.   FIXME: move function. # FIXME doc
+                """
+                Obtain the most relevant question text for a particular question.
+                This is, in order:
+                - the question prompt, if the question has one
+                - the <p> or <label> element which precedes the choices (skipping descriptive elements)
+                - a text like "Question 5" if no other name could be found
+                """
+                assert question_id in lcp.problem_data
+                problem_data = lcp.problem_data[question_id]
+                prompt = problem_data.get('label', problem_data.get('descriptions').values())  # FIXME rename
+                if prompt:
+                    question_text = prompt.striptags()
+                else:
+
+                    xml_elems = [elem for elem, data in lcp.responder_answers.iteritems() if question_id in data]
+                    assert len(xml_elems) == 1, (len(xml_elems), xml_elems, question_id, list(lcp.responder_answers.iteritems()))
+
+                    # Get the element that probably contains the question text
+                    questiontext_elem = xml_elems[0].getprevious()
+
+                    # Go backwards, skip <description> and other responses, because they don't contain the question
+                    skip_elems = responsetypes.registry.registered_tags() + ['description']
+                    while questiontext_elem is not None and questiontext_elem.tag in skip_elems:
+                        questiontext_elem = questiontext_elem.getprevious()
+
+                    if questiontext_elem is not None and questiontext_elem.tag in ['p', 'label']:
+                        question_text = questiontext_elem.text
+                    else:
+                        # question_text = None
+                        # For instance 'd2e35c1d294b4ba0b3b1048615605d2a_2_1' contains 2, which is used in question number 1
+                        question_nr = int(question_id.split('_')[1])-1
+                        question_text = "Question %i" % question_nr
+
+                return question_text
+
             print("This part is also new. FIXME test it")
             for question_id, answers in lcp.get_question_answers().items():
                 if '_solution_' in question_id:
@@ -422,22 +459,16 @@ class CapaDescriptor(CapaFields, RawDescriptor):
                     print(lcp.problem_data)
                     import sys; sys.stdout = sys.__stdout__; import ipdb; ipdb.set_trace()
 
-                assert question_id in lcp.problem_data
-                problem_data = lcp.problem_data[question_id]
-                question_tag = problem_data.get('label', problem_data.get('descriptions').values())  # FIXME rename
-                print("tag", question_tag)
-                if question_tag:
-                    question_text = question_tag[0].striptags()
-                else:
-                    question_text = "FIXME get question by parsing the XML"
 
+                question_text = find_question_label_for_answer(question_id)
                 answer_text = answers[0]
                 # FIXME get the right answers by using more code like the code below
-                import sys; sys.stdout = sys.__stdout__; import ipdb; ipdb.set_trace()
+                # import sys; sys.stdout = sys.__stdout__; import ipdb; ipdb.set_trace()
 
+                # print(type(question_text), type(answer_text), question_id)
                 print("On question {question_id} ({description}) user {username} answered {answer}".format(
                     question_id=question_id,
-                    description=question_text,
+                    description=question_text.encode('utf-8'),
                     username=user_state.username,
                     answer=answer_text,
                 ))
@@ -446,23 +477,8 @@ class CapaDescriptor(CapaFields, RawDescriptor):
             student_answers = user_state.state['student_answers']
 
             for question_id, answer in student_answers.iteritems():
-                # import sys; sys.stdout = sys.__stdout__; import ipdb; ipdb.set_trace()
+                question_column = "see above code"
 
-                # special debug. FIXME delete
-                # if question_id in ['98e6a8e915904d5389821a94e48babcf_7_1' ]:
-                #     import sys; sys.stdout = sys.__stdout__; import ipdb; ipdb.set_trace()
-
-                # Take the question text from the preceding paragraph or label
-                question_column = "self.find_question_label_for_answer(question_id).    FIXME redo with the static function"
-                if not question_column:
-                    # No question name available. Use question number.
-                    # For instance 'd2e35c1d294b4ba0b3b1048615605d2a_2_1' contains 2, which is used in question number 1
-                    question_nr = int(question_id.split('_')[1])-1
-
-                    question_column = "Question %i" % question_nr
-
-                    # FIXME debug only: remove
-                    # question_column = "Question %i (%s)" % (question_nr, question_id)
 
                 answer_with_names = "FIXME: redo this part to get the answer, so that it can get the right answers with the static function"
                 # import sys; sys.stdout = sys.__stdout__; import ipdb; ipdb.set_trace()
