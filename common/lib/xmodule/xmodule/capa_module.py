@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """Implements basics of Capa, including class CapaModule."""
 import json
 import logging
@@ -399,7 +400,7 @@ class CapaDescriptor(CapaFields, RawDescriptor):
                 problem_text=self.data,
                 id=self.location.html_id(),
                 capa_system=capa_system,
-                capa_module=self,
+                capa_module=self, # FIXME: self is a CapaDescriptor, not a CapaModule. Does this make sense? Without a CapaModule, we can't use functions like get_submission_metadata()
                 state={
                     'done': user_state.state.get('done'),
                     'correct_map': user_state.state.get('correct_map'),
@@ -409,6 +410,8 @@ class CapaDescriptor(CapaFields, RawDescriptor):
                     'seed': user_state.state.get('seed'),
                 },
                 seed=user_state.state.get('seed'),
+                # extract_tree=False allows us to work without a fully initialized CapaModule
+                # We'll still be able to find particular data in the XML when we need it
                 extract_tree=False,
             )
 
@@ -448,8 +451,37 @@ class CapaDescriptor(CapaFields, RawDescriptor):
 
                 return question_text
 
-            print("This part is also new. FIXME test it")
-            for question_id, answers in lcp.get_question_answers().items():
+            def find_answer_text(question_id, current_answer_text):  # FIXME fix names.   FIXME: move function. # FIXME doc
+                # import sys; sys.stdout = sys.__stdout__; import ipdb; ipdb.set_trace()
+
+                # if question_id == '98e6a8e915904d5389821a94e48babcf_11_1':
+                #     import sys; sys.stdout = sys.__stdout__; import ipdb; ipdb.set_trace()
+
+                if type(current_answer_text) == list:
+                    # we need to join them
+                    answer_text = ""
+                    for choice_number in current_answer_text:
+                        for element, response in lcp.responders.iteritems():
+                            # print("Did I find it yet?", question_id, response.answer_ids)
+                            # if response.answer_id == question_id:
+                            if question_id in response.answer_ids:
+                                if response.inputfields:
+
+                                    # debug:
+                                    # from lxml import etree; print(etree.tostring(response.inputfields[0], pretty_print=True))
+
+                                    for choice_el in response.inputfields[0].getchildren():
+                                        if choice_el.get('name') == choice_number:
+                                            answer_text += choice_el.text + ", "
+                                break
+                    return answer_text
+                else:
+                    assert not current_answer_text.startswith('choice_')  # FIXME remove when it's for sure
+                    # already a string with the answer
+                    return current_answer_text
+
+                
+            for question_id, orig_answers in lcp.get_question_answers().items():
                 if '_solution_' in question_id:
                     # FIXME I think this is not really a question/answer and can be skipped. But verify
                     continue
@@ -461,16 +493,15 @@ class CapaDescriptor(CapaFields, RawDescriptor):
 
 
                 question_text = find_question_label_for_answer(question_id)
-                answer_text = answers[0]
-                # FIXME get the right answers by using more code like the code below
-                # import sys; sys.stdout = sys.__stdout__; import ipdb; ipdb.set_trace()
+                answer_text = find_answer_text(question_id, current_answer_text=orig_answers)
 
                 # print(type(question_text), type(answer_text), question_id)
-                print("On question {question_id} ({description}) user {username} answered {answer}".format(
+                print("On question {question_id} ({description}) user {username} answered «{answer}» (DEBUG: original answer: {orig_answers}".format(
                     question_id=question_id,
                     description=question_text.encode('utf-8'),
                     username=user_state.username,
                     answer=answer_text,
+                    orig_answers=orig_answers
                 ))
             return
 
