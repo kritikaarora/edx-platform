@@ -376,7 +376,7 @@ class CapaDescriptor(CapaFields, RawDescriptor):
                 extract_tree=False,
             )
 
-            def find_question_label_for_answer(question_id): # FIXME fix names.   FIXME: move function. # FIXME doc
+            def find_question_label_for_answer(question_id):  # FIXME fix names.   FIXME: move function. # FIXME doc
                 """
                 Obtain the most relevant question text for a particular question.
                 This is, in order:
@@ -407,7 +407,7 @@ class CapaDescriptor(CapaFields, RawDescriptor):
                     else:
                         # question_text = None
                         # For instance 'd2e35c1d294b4ba0b3b1048615605d2a_2_1' contains 2, which is used in question number 1
-                        question_nr = int(question_id.split('_')[-2])-1
+                        question_nr = int(question_id.split('_')[-2]) - 1
                         question_text = "Question %i" % question_nr
 
                 return question_text
@@ -438,7 +438,7 @@ class CapaDescriptor(CapaFields, RawDescriptor):
                     return answer_text
                 elif type(current_answer_text) == dict:
                     from pprint import pprint, pformat
-                    return "FIXME not implement yet for dicts. "+pformat(current_answer_text)
+                    return "FIXME not implement yet for dicts. " + pformat(current_answer_text)
                 else:
                     assert not current_answer_text.startswith('choice_')  # FIXME remove when it's for sure
                     # already a string with the answer
@@ -452,8 +452,8 @@ class CapaDescriptor(CapaFields, RawDescriptor):
                     print("FIXME debug this case. Maybe it happened only with the _solution_ scenario")
                     print(question_id)
                     print(lcp.problem_data)
-                    import sys; sys.stdout = sys.__stdout__; import ipdb; ipdb.set_trace()
-
+                    raise NotImplementedError()
+                    # import sys; sys.stdout = sys.__stdout__; import ipdb; ipdb.set_trace()
 
                 question_text = find_question_label_for_answer(question_id)
                 answer_text = find_answer_text(question_id, current_answer_text=orig_answers)
