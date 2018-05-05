@@ -472,7 +472,7 @@ class CapaDescriptor(CapaFields, RawDescriptor):
 
                                     for choice_el in response.inputfields[0].getchildren():
                                         if choice_el.get('name') == choice_number:
-                                            answer_text += choice_el.text + ", "
+                                            answer_text += choice_el.text + ("(DEBUG: orig. was. %s)" % choice_number) + ", "
                                 break
                     return answer_text
                 else:
@@ -495,46 +495,13 @@ class CapaDescriptor(CapaFields, RawDescriptor):
                 question_text = find_question_label_for_answer(question_id)
                 answer_text = find_answer_text(question_id, current_answer_text=orig_answers)
 
-                # print(type(question_text), type(answer_text), question_id)
-                print("On question {question_id} ({description}) user {username} answered «{answer}» (DEBUG: original answer: {orig_answers}".format(
-                    question_id=question_id,
-                    description=question_text.encode('utf-8'),
-                    username=user_state.username,
-                    answer=answer_text,
-                    orig_answers=orig_answers
-                ))
-            return
-
-            student_answers = user_state.state['student_answers']
-
-            for question_id, answer in student_answers.iteritems():
-                question_column = "see above code"
-
-
-                answer_with_names = "FIXME: redo this part to get the answer, so that it can get the right answers with the static function"
-                # import sys; sys.stdout = sys.__stdout__; import ipdb; ipdb.set_trace()
-                if True and "disabled when using static":
-                    metad = self.get_submission_metadata({question_id: answer}, self.lcp.correct_map)
-
-                    assert question_id in metad
-                    answer_with_names = metad[question_id]['answer']
-                    if type(answer_with_names) == list:
-                        answer_with_names = ",".join(answer_with_names)
-                answer_column = answer_with_names
-
-                # FIXME delete this (original answer)
-                # answer_column = "".join(answer)
-
-                xml_string = etree.tostring(tree, pretty_print=True)
-                xml_string = xml_string.replace("<", "&lt;")
-                xml_string = xml_string.replace(">", "&gt;")
-                xml_string = xml_string.replace("\n", "<br />")
-                # print(xml_string)
                 yield (user_state.username, {
-                    "Question": question_column, "Answer": answer_column,
-                    # "BTW metadata": metad,
-                    # "BTW here's the XML which contains the question too": xml_string,
+                    "Question ID": question_id,
+                    "Question": question_text,
+                    "Answer": answer_text,
                 })
+
+            return
 
 
     # Proxy to CapaModule for access to any of its attributes
