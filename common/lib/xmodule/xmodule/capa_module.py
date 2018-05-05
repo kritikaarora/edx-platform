@@ -304,16 +304,6 @@ class CapaDescriptor(CapaFields, RawDescriptor):
         )
         return lcp.get_max_score()
 
-    # FIXME delete course_key and block_key parameters (they are implicit)
-    # FIXME delete get_block parameter (unneeded?)
-    # FIXME implement filter by user_ids and match_string
-    # v1:
-    # def generate_report_data(self, course_key=None, block_key=None, get_block=None, user_ids=None, match_string=None):
-    # v2 (static):
-    # FIXME make static so that it can run in a smaller runtime, with ~~~~ only a CapaDescriptor, see e.g. CapaDescriptor.max_score about how to build such runtime. Maybe move to CapaDescriptor
-    # @staticmethod
-    # def generate_report_data(descriptor):
-    # v3: non-static, and receive user_state_client as parameter
     def generate_report_data(self, user_state_iterator, limit_responses=None):
         """
         Return a list of student responses to this block in a readable way.
@@ -330,36 +320,8 @@ class CapaDescriptor(CapaFields, RawDescriptor):
             ("username", {"Question": "2 + 2 equals how many?", "Answer": "Four"})
         """
 
-        # import sys; sys.stdout = sys.__stdout__; import ipdb; ipdb.set_trace()
-
-        if False and "testing with static":
-            # import sys; sys.stdout = sys.__stdout__; import ipdb; ipdb.set_trace()
-            self = descriptor
-
-            # from xmodule.tests import DATA_DIR, get_test_system, get_test_descriptor_system
-            # self.xmodule_runtime = get_test_system()
-            # assert self.xmodule_runtime
-
         if self.category != 'problem':
             raise NotImplementedError()
-        # FIXME reimplement without using self.lcp (to make it work with the static one)
-        if False and 'customresponse' in [elem.tag for elem in self.lcp.responder_answers.keys()]:
-            raise NotImplementedError("Not implemented for custom response problems "
-                                      "(like drag&drop, chemical equations etc.)")
-
-        # FIXME remove these tests:
-        # from opaque_keys.edx.keys import CourseKey, UsageKey
-        # block_key = UsageKey.from_string('block-v1:edX+DemoX+Demo_Course+type@problem+block@a0effb954cca4759994f1ac9e9434bf4')
-
-        block_key = self.location
-
-        # FIXME needed?
-        try:
-            tree = etree.XML(self.data)
-        except etree.XMLSyntaxError:
-            log.error('Error parsing problem types from xml for capa module {}'.format(self.display_name))
-            return
-
 
         from capa.capa_problem import LoncapaProblem, LoncapaSystem
         capa_system = LoncapaSystem(
@@ -393,14 +355,13 @@ class CapaDescriptor(CapaFields, RawDescriptor):
             if 'student_answers' not in user_state.state:
                 continue
 
-            print("This part is new. FIXME test it")
-
             #capa_system.anonymous_student_id = # FIXME re-set the anonymous ID to this student's anonymous ID somehow?
             lcp = LoncapaProblem(
                 problem_text=self.data,
                 id=self.location.html_id(),
                 capa_system=capa_system,
-                capa_module=self, # FIXME: self is a CapaDescriptor, not a CapaModule. Does this make sense? Without a CapaModule, we can't use functions like get_submission_metadata()
+                # We choose to run without a fully initialized CapaModule
+                capa_module=None,
                 state={
                     'done': user_state.state.get('done'),
                     'correct_map': user_state.state.get('correct_map'),
@@ -503,7 +464,6 @@ class CapaDescriptor(CapaFields, RawDescriptor):
 
             return
 
-
     # Proxy to CapaModule for access to any of its attributes
     answer_available = module_attr('answer_available')
     submit_button_name = module_attr('submit_button_name')
@@ -524,7 +484,6 @@ class CapaDescriptor(CapaFields, RawDescriptor):
     has_submitted_answer = module_attr('has_submitted_answer')
     is_attempted = module_attr('is_attempted')
     is_correct = module_attr('is_correct')
-    # correctness_available = module_attr('correctness_available')     # FIXME remove
     is_past_due = module_attr('is_past_due')
     is_submitted = module_attr('is_submitted')
     lcp = module_attr('lcp')
