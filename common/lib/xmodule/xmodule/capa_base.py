@@ -700,6 +700,14 @@ class CapaMixin(ScorableXBlockMixin, CapaFields):
 
         html = self.remove_tags_from_html(html)
 
+        # FIXME add report data here, just to test
+        from courseware.user_state_client import DjangoXBlockUserStateClient
+        user_state_client = DjangoXBlockUserStateClient()
+        rep = self.descriptor.generate_report_data(user_state_client.iter_all_for_block(self.location))
+        rep = list(rep)
+        from pprint import pprint, pformat
+        html += "<h1>report data here</h1><pre>" + pformat(rep) +"</pre>"
+
         # Enable/Disable Submit button if should_enable_submit_button returns True/False.
         submit_button = self.submit_button_name()
         submit_button_submitting = self.submit_button_submitting_name()

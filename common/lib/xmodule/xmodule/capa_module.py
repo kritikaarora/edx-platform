@@ -328,8 +328,8 @@ class CapaDescriptor(CapaFields, RawDescriptor):
             ajax_url=None,
             anonymous_student_id=None,
             cache=None,
-            can_execute_unsafe_code=None,
-            get_python_lib_zip=None,
+            can_execute_unsafe_code=lambda: None,
+            get_python_lib_zip=lambda: None,
             DEBUG=None,
             filestore=self.runtime.resources_fs,
             i18n=self.runtime.service(self, "i18n"),
@@ -407,7 +407,7 @@ class CapaDescriptor(CapaFields, RawDescriptor):
                     else:
                         # question_text = None
                         # For instance 'd2e35c1d294b4ba0b3b1048615605d2a_2_1' contains 2, which is used in question number 1
-                        question_nr = int(question_id.split('_')[1])-1
+                        question_nr = int(question_id.split('_')[-2])-1
                         question_text = "Question %i" % question_nr
 
                 return question_text
@@ -436,6 +436,9 @@ class CapaDescriptor(CapaFields, RawDescriptor):
                                             answer_text += choice_el.text + ("(DEBUG: orig. was. %s)" % choice_number) + ", "
                                 break
                     return answer_text
+                elif type(current_answer_text) == dict:
+                    from pprint import pprint, pformat
+                    return "FIXME not implement yet for dicts. "+pformat(current_answer_text)
                 else:
                     assert not current_answer_text.startswith('choice_')  # FIXME remove when it's for sure
                     # already a string with the answer
