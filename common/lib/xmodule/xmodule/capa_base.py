@@ -1700,33 +1700,3 @@ class CapaMixin(ScorableXBlockMixin, CapaFields):
         """
         lcp_score = self.lcp.calculate_score()
         return Score(raw_earned=lcp_score['score'], raw_possible=lcp_score['total'])
-
-    def find_question_label_for_answer(self, question_id):  # FIXME fix names (question_id? answer_id?)
-        """
-        Find correct question label! (instead of ID) This may require parsing the HTML. Or finding where the text is stored
-        # FIXME doc
-        """
-        # If a prompt is defined (with the syntax >>This is a question|And this is a tip<<),
-        # then the question text is available in problem_data
-        label = self.lcp.problem_data[question_id].get('label', None)
-        if label:
-            return str(label)
-
-        # FIXME if there are 2 successive dropdowns, the 2nd is finding the question from the 1st one. Fix
-
-        xml_elems = [elem for elem, data in self.lcp.responder_answers.iteritems() if question_id in data]
-        assert len(xml_elems) == 1, (len(xml_elems), xml_elems, question_id, list(self.lcp.responder_answers.iteritems()))
-
-        # Get the element that probably contains the question text
-        questiontext_elem = xml_elems[0].getprevious()
-
-        # Go backwards, skip <description> and other responses, because they don't contain the question
-        skip_elems = registry.registered_tags() + ['description']
-        while questiontext_elem is not None and questiontext_elem.tag in skip_elems:
-            questiontext_elem = questiontext_elem.getprevious()
-
-        if questiontext_elem is not None and questiontext_elem.tag in ['p', 'label']:
-            return questiontext_elem.text
-        else:
-            return None
-
