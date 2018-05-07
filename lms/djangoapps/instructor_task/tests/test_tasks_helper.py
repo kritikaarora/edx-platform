@@ -7,6 +7,7 @@ Unit tests for LMS instructor-initiated background tasks helper functions.
 - Tests all of the existing reports.
 
 """
+from contextlib import contextmanager
 
 import os
 import shutil
@@ -473,25 +474,58 @@ class TestProblemResponsesReport(TestReportMixin, InstructorTaskModuleTestCase):
         self.instructor = self.create_instructor('instructor')
         self.student = self.create_student('student')
 
+    @contextmanager
+    def _remove_report_generator(self):
+        """
+        Temporarily removes the generate_report_data method so we can test
+        report generation when it's absent.
+        """
+        from xmodule.capa_module import CapaDescriptor
+        generate_report_data = CapaDescriptor.generate_report_data
+        del CapaDescriptor.generate_report_data
+        yield
+        CapaDescriptor.generate_report_data = generate_report_data
+
     @patch.dict("django.conf.settings.FEATURES", {"MAX_PROBLEM_RESPONSES_COUNT": 4})
     def test_build_student_data_limit(self):
+        with self._remove_report_generator():
+            self.define_option_problem(u'Problem1')
+            for ctr in range(5):
+                student = self.create_student('student{}'.format(ctr))
+                self.submit_student_answer(student.username, u'Problem1', ['Option 1'])
+
+            student_data = ProblemResponses._build_student_data(
+                user_id=self.instructor.id,
+                course_id=self.course.id,
+                problem_location=str(self.course.location),
+            )
+
+            self.assertEquals(len(student_data), 4)
+
+    def test_build_student_data_no_generate(self):
+        with self._remove_report_generator():
+            self.define_option_problem(u'Problem1')
+            self.submit_student_answer(self.student.username, u'Problem1', ['Option 1'])
+
+            student_data = ProblemResponses._build_student_data(
+                user_id=self.instructor.id,
+                course_id=self.course.id,
+                problem_location=str(self.course.location),
+            )
+            self.assertEquals(len(student_data), 1)
+            self.assertDictContainsSubset({
+                'username': 'student',
+                'location': 'test_course > Section > Subsection > Problem1',
+                'block_key': 'i4x://edx/1.23x/problem/Problem1',
+                'title': 'Problem1',
+            }, student_data[0])
+
+    @patch('xmodule.capa_module.CapaDescriptor.generate_report_data')
+    def test_build_student_data_generate(self, mock_generate_report_data):
         self.define_option_problem(u'Problem1')
-        for ctr in range(5):
-            student = self.create_student('student{}'.format(ctr))
-            self.submit_student_answer(student.username, u'Problem1', ['Option 1'])
-
-        student_data = ProblemResponses._build_student_data(
-            user_id=self.instructor.id,
-            course_id=self.course.id,
-            problem_location=str(self.course.location),
-        )
-
-        self.assertEquals(len(student_data), 4)
-
-    def test_build_student_data(self):
-        self.define_option_problem(u'Problem1')
-        self.submit_student_answer(self.student.username, u'Problem1', ['Option 1'])
-
+        mock_generate_report_data.return_value = iter([
+            ('student', {'some': 'state'}),
+        ])
         student_data = ProblemResponses._build_student_data(
             user_id=self.instructor.id,
             course_id=self.course.id,
