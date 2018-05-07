@@ -619,7 +619,11 @@ class ProblemResponses(object):
 
                 if hasattr(block, 'generate_report_data'):
                     user_state_iterator = user_state_client.iter_all_for_block(block_key)
-                    responses = block.generate_report_data(user_state_iterator, limit_responses=max_count)
+                    responses = [
+                        {'username': data[0], 'state': data[1]}
+                        for data in
+                        block.generate_report_data(user_state_iterator, max_count)
+                    ]
                 else:
                     responses = list_problem_responses(course_id, block_key, max_count)
 
