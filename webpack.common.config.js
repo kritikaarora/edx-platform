@@ -9,7 +9,7 @@ var StringReplace = require('string-replace-webpack-plugin');
 var Merge = require('webpack-merge');
 
 var files = require('./webpack-config/file-lists.js');
-var xmoduleJS = require('./common/static/xmodule/webpack.xmodule.config.js');
+var xmoduleJS;
 
 var filesWithRequireJSBlocks = [
     path.resolve(__dirname, 'common/static/common/js/components/utils/view_utils.js'),
@@ -32,7 +32,7 @@ var workerConfig = function() {
             webworker: {
                 target: 'webworker',
                 context: __dirname,
-                entry: require('../workers.json'),
+                entry: require('../workers.json'), // eslint-disable-line global-require, import/no-unresolved
                 output: {
                     filename: '[name].js',
                     path: path.resolve(__dirname, 'common/static/bundles')
@@ -58,11 +58,19 @@ var workerConfig = function() {
                     extensions: ['.js']
                 }
             }
-        }
+        };
     } catch (err) {
         return null;
     }
 };
+
+try {
+    // eslint-disable-next-line global-require, import/no-unresolved
+    xmoduleJS = require('./common/static/xmodule/webpack.xmodule.config.js');
+} catch (error) {
+    xmoduleJS = {};
+}
+
 
 module.exports = Merge.smart({
     web: {
@@ -388,7 +396,7 @@ module.exports = Merge.smart({
                 'common/static/coffee/src',
                 'common/static/common/js',
                 'common/static/common/js/vendor/',
-                'common/static/common/js/components',
+                'common/static/common/js/components/',
                 'common/static/js/src',
                 'common/static/js/vendor/',
                 'common/static/js/vendor/jQuery-File-Upload/js/',
