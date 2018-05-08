@@ -1,5 +1,6 @@
 import {combineReducers} from 'redux';
 import {courseBlocksActions} from '../actions/constants';
+import {popupTask} from "../../../ReportPopup/data/reducers";
 
 export const buildBlockTree = (blocks, excludeBlockTypes) => {
     if (!(blocks && blocks.root)) return null;
@@ -27,7 +28,7 @@ const blocks = (state = {}, action) => {
     }
 };
 
-const selectedBlock = (state = null, action) => {
+export const selectedBlock = (state = null, action) => {
     switch (action.type) {
         case courseBlocksActions.SELECT_BLOCK:
             return action.blockId;
@@ -52,4 +53,5 @@ export default combineReducers({
     blocks,
     selectedBlock,
     rootBlock,
+    popupTask,
 });

@@ -313,6 +313,16 @@
       }
     }
   }
+
+  .report-popup-modal-body {
+    text-align: center;
+    p {
+      text-align: center;
+    }
+    .msg {
+      display: inherit;
+    }
+  }
 }
 
 // elements - general

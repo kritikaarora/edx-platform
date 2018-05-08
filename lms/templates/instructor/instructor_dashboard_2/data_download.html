@@ -61,18 +61,16 @@ from openedx.core.djangolib.markup import HTML, Text
     <p>
       <div class="problems">
         ${static.renderReact(
-          component="ProblemBrowser",
-          id="react-block-listing",
+          component="ReportPopup",
+          id="react-problem-report",
           props={
             "courseId": course.id,
-            "excludeBlockTypes": ['html', 'video', 'discussion']
+            "excludeBlockTypes": ['html', 'video', 'discussion'],
+            "initialEndpoint": section_data['get_problem_responses_url'],
+            "taskStatusEndpoint": "/instructor_task_status"
           }
         )}
       </div>
-    </p>
-
-    <p>
-      <input type="button" name="list-problem-responses-csv" value="${_("Download a CSV of problem responses")}" data-endpoint="${ section_data['get_problem_responses_url'] }" data-csv="true">
     </p>
 
     <div class="issued_certificates">

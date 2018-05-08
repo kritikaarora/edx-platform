@@ -1008,12 +1008,12 @@ def get_problem_responses(request, course_id):
         if problem_key.course_key != course_key:
             raise InvalidKeyError(type(problem_key), problem_key)
     except InvalidKeyError:
-        return JsonResponseBadRequest(_("Could not find problem with this location."))
+        return JsonResponseBadRequest(_("Could not find problem with location: '{}'.".format(problem_location)))
 
-    lms.djangoapps.instructor_task.api.submit_calculate_problem_responses_csv(request, course_key, problem_location)
+    task = lms.djangoapps.instructor_task.api.submit_calculate_problem_responses_csv(request, course_key, problem_location)
     success_status = SUCCESS_MESSAGE_TEMPLATE.format(report_type=report_type)
 
-    return JsonResponse({"status": success_status})
+    return JsonResponse({"status": success_status, "task_id": task.task_id})
 
 
 @require_POST
@@ -2379,11 +2379,12 @@ def list_report_downloads(_request, course_id):
     """
     course_id = CourseKey.from_string(course_id)
     report_store = ReportStore.from_config(config_name='GRADES_DOWNLOAD')
+    report_name = _request.POST.get("report_name", None)
 
     response_payload = {
         'downloads': [
             dict(name=name, url=url, link=HTML('<a href="{}">{}</a>').format(HTML(url), Text(name)))
-            for name, url in report_store.links_for(course_id)
+            for name, url in report_store.links_for(course_id) if report_name is None or name == report_name
         ]
     }
     return JsonResponse(response_payload)
