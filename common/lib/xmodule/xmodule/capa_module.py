@@ -10,6 +10,7 @@ from pkg_resources import resource_string
 
 import dogstats_wrapper as dog_stats_api
 from capa import responsetypes
+from capa import inputtypes
 from xmodule.exceptions import NotFoundError, ProcessingError
 from xmodule.raw_module import RawDescriptor
 from xmodule.util.misc import escape_html_characters
@@ -428,12 +429,20 @@ class CapaDescriptor(CapaFields, RawDescriptor):
                             if question_id in response.answer_ids:
                                 if response.inputfields:
 
+                                    choicegroup = response.inputfields[0]
+
                                     # debug:
                                     # from lxml import etree; print(etree.tostring(response.inputfields[0], pretty_print=True))
 
-                                    for choice_el in response.inputfields[0].getchildren():
-                                        if choice_el.get('name') == choice_number:
-                                            answer_text += choice_el.text + ("(DEBUG: orig. was. %s)" % choice_number) + ", "
+                                    input_cls = inputtypes.registry.get_class_for_tag(choicegroup.tag)
+                                    choices_map = dict(input_cls.extract_choices(choicegroup, lcp.capa_system.i18n))
+
+                                    if '<' in choices_map[choice_number]:
+                                        import sys; sys.stdout = sys.__stdout__; import ipdb; ipdb.set_trace()
+                                        # FIXME avoid <choicehint>, e.g.  "One <choicehint label="Label">Right!</choicehint>"
+
+                                    answer_text += choices_map[choice_number] + ("(DEBUG: orig. was. %s)" % choice_number) + ", "
+
                                 break
                     return answer_text
                 elif type(current_answer_text) == dict:
