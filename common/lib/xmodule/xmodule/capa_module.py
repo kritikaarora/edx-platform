@@ -423,33 +423,35 @@ class CapaDescriptor(CapaFields, RawDescriptor):
                     # we need to join them
                     answer_text = ""
                     for choice_number in current_answer_text:
-                        for element, response in lcp.responders.iteritems():
-                            # print("Did I find it yet?", question_id, response.answer_ids)
-                            # if response.answer_id == question_id:
-                            if question_id in response.answer_ids:
-                                if response.inputfields:
-
-                                    choicegroup = response.inputfields[0]
-
-                                    # debug:
-                                    # from lxml import etree; print(etree.tostring(response.inputfields[0], pretty_print=True))
-
-                                    input_cls = inputtypes.registry.get_class_for_tag(choicegroup.tag)
-                                    choices_map = dict(input_cls.extract_choices(choicegroup, lcp.capa_system.i18n, text_only=True))
-
-                                    answer_text += choices_map[choice_number] + ("(DEBUG: orig. was. %s)" % choice_number) + ", "
-
-                                break
+                        choice_text = find_answer_text(question_id, choice_number)
+                        answer_text += choice_text + ", "
+                        # print("Adding %s, and now I have %s" % (choice_text, answer_text))
                     return answer_text
+
                 elif type(current_answer_text) == dict:
                     from pprint import pprint, pformat
                     return "FIXME not implement yet for dicts. " + pformat(current_answer_text)
+                elif current_answer_text.startswith('choice_'):
+                    # FIXME improve xpath to get the answer text directly
+                    elems = lcp.tree.xpath('//*[@id="'+question_id+'"]//*[@name="'+current_answer_text+'"]')
+                    assert len(elems) == 1
+                    choice = elems[0]
+                    choicegroup = choice.getparent()
+                    input_cls = inputtypes.registry.get_class_for_tag(choicegroup.tag)
+                    choices_map = dict(input_cls.extract_choices(choicegroup, lcp.capa_system.i18n, text_only=True))
+                    answer_text = choices_map[current_answer_text]
+                    answer_text += ("(DEBUG: orig. was. %s)" % current_answer_text)
+                    return answer_text
                 else:
-                    assert not current_answer_text.startswith('choice_')  # FIXME remove when it's for sure
                     # already a string with the answer
                     return current_answer_text
 
-            for question_id, orig_answers in lcp.get_question_answers().items():
+            # FIXME get the chosen answer, not the right one
+            print("student answers", lcp.student_answers)
+            # import sys; sys.stdout = sys.__stdout__; import ipdb; ipdb.set_trace()
+
+            # for question_id, orig_answers in lcp.get_question_answers().items():  # FIXME delete (it gets correct answers)
+            for question_id, orig_answers in lcp.student_answers.items():
                 if '_solution_' in question_id:
                     # FIXME I think this is not really a question/answer and can be skipped. But verify
                     continue
