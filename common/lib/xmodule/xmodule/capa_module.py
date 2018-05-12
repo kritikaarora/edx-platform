@@ -435,11 +435,7 @@ class CapaDescriptor(CapaFields, RawDescriptor):
                                     # from lxml import etree; print(etree.tostring(response.inputfields[0], pretty_print=True))
 
                                     input_cls = inputtypes.registry.get_class_for_tag(choicegroup.tag)
-                                    choices_map = dict(input_cls.extract_choices(choicegroup, lcp.capa_system.i18n))
-
-                                    if '<' in choices_map[choice_number]:
-                                        import sys; sys.stdout = sys.__stdout__; import ipdb; ipdb.set_trace()
-                                        # FIXME avoid <choicehint>, e.g.  "One <choicehint label="Label">Right!</choicehint>"
+                                    choices_map = dict(input_cls.extract_choices(choicegroup, lcp.capa_system.i18n, text_only=True))
 
                                     answer_text += choices_map[choice_number] + ("(DEBUG: orig. was. %s)" % choice_number) + ", "
 
