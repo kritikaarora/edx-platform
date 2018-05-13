@@ -344,12 +344,6 @@ class CapaDescriptor(CapaFields, RawDescriptor):
             matlab_api_key=None,
         )
 
-        # import sys; sys.stdout = sys.__stdout__; import ipdb; ipdb.set_trace()
-
-        # FIXME remove this step
-        states = list(user_state_iterator)
-        print("I am seeing the following user_state:", states)
-
         for idx, user_state in enumerate(states):
 
             if limit_responses and idx >= limit_responses:
