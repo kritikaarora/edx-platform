@@ -403,7 +403,15 @@ class CapaDescriptor(CapaFields, RawDescriptor):
                     question_text = prompt.striptags()
                 else:
                     # If no prompt, then we must look for something resembling a question ourselves
-                    # Starting from the answer we go up and backwards
+                    #
+                    # We have a structure like:
+                    #
+                    # <p />
+                    # <optionresponse id="a0effb954cca4759994f1ac9e9434bf4_2">
+                    #   <optioninput id="a0effb954cca4759994f1ac9e9434bf4_3_1" />
+                    # <optionresponse>
+                    #
+                    # Starting from  answer (the optioninput in this example) we go up and backwards
                     xml_elems = lcp.tree.xpath('//*[@id="' + answer_id + '"]')
                     assert len(xml_elems) == 1
                     xml_elem = xml_elems[0].getparent()
@@ -435,21 +443,40 @@ class CapaDescriptor(CapaFields, RawDescriptor):
 
                 return question_text
 
-            def find_answer_text(answer_id, current_answer_text):  # FIXME fix names.   FIXME: move function. # FIXME doc
+            def find_answer_text(answer_id, current_answer_text):  # FIXME: move function
+                """
+                Process a raw answer text to make it more meaningful.
 
+                E.g. in a choice problem like "How much is 2+2?" "Two"/"Three"/"More than three",
+                this function will transform "choice_1" (which is the internal response given by
+                many capa methods) to the human version, e.g. "More than three".
+
+                If the answers are multiple (e.g. because they're from a multiple choice problem),
+                this will join them with a comma.
+
+                If passed a normal string which is already the answer, it doesn't change it.
+
+                Arguments:
+                    answer_id: a string like "98e6a8e915904d5389821a94e48babcf_13_1"
+                    current_answer_text: a data structure as found in `LoncapaProblem.student_answers`
+                        which represents the best response we have until now
+
+                Returns:
+                    a string with the human version of the response
+                """
                 if type(current_answer_text) == list:
-                    # we need to join them
-                    answer_text = ""
-                    for choice_number in current_answer_text:
-                        choice_text = find_answer_text(answer_id, choice_number)
-                        answer_text += choice_text + ", "
-                        # print("Adding %s, and now I have %s" % (choice_text, answer_text))
-                    return answer_text
+                    # Multiple answers. This case happens e.g. in multiple choice problems
+                    answer_text = ", ".join([
+                        find_answer_text(answer_id, answer) for answer in current_answer_text
+                    ])
 
                 elif type(current_answer_text) == dict:
                     from pprint import pprint, pformat
-                    return "FIXME not implemented yet for dicts. " + pformat(current_answer_text)
+                    answer_text = "FIXME not implemented yet for dicts. " + pformat(current_answer_text)
+
                 elif current_answer_text.startswith('choice_'):
+                    # Many problem (e.g. checkbox) report "choice_0" "choice_1" etc.
+
                     # FIXME improve xpath to get the answer text directly
                     elems = lcp.tree.xpath('//*[@id="'+answer_id+'"]//*[@name="'+current_answer_text+'"]')
                     assert len(elems) == 1
@@ -459,10 +486,12 @@ class CapaDescriptor(CapaFields, RawDescriptor):
                     choices_map = dict(input_cls.extract_choices(choicegroup, lcp.capa_system.i18n, text_only=True))
                     answer_text = choices_map[current_answer_text]
                     answer_text += ("(DEBUG: orig. was. %s)" % current_answer_text)
-                    return answer_text
+
                 else:
                     # already a string with the answer
-                    return current_answer_text
+                    answer_text = current_answer_text
+
+                return answer_text
 
 
             for answer_id, orig_answers in lcp.student_answers.items():
@@ -472,12 +501,9 @@ class CapaDescriptor(CapaFields, RawDescriptor):
                 elif answer_id.endswith('_dynamath'):
                     # FIXME check the case of formulae
                     continue
-                elif answer_id not in lcp.problem_data:
-                    print("FIXME debug this case. Maybe it happened only with the _solution_ scenario")
-                    print(answer_id)
-                    print(lcp.problem_data)
-                    import sys; sys.stdout = sys.__stdout__; import ipdb; ipdb.set_trace()
-                    raise NotImplementedError()
+
+                # The rest of items are answers for which we have information
+                assert answer_id in lcp.problem_data
 
                 question_text = find_question_label(answer_id)
                 answer_text = find_answer_text(answer_id, current_answer_text=orig_answers)
