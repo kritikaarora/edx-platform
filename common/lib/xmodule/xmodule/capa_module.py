@@ -327,6 +327,8 @@ class CapaDescriptor(CapaFields, RawDescriptor):
         from capa.capa_problem import LoncapaProblem, LoncapaSystem
         capa_system = LoncapaSystem(
             ajax_url=None,
+            # TODO we could also set anonymous_student_id to the anonymous ID
+            # of the user which answered each problem
             anonymous_student_id=None,
             cache=None,
             can_execute_unsafe_code=lambda: None,
@@ -356,7 +358,6 @@ class CapaDescriptor(CapaFields, RawDescriptor):
             if 'student_answers' not in user_state.state:
                 continue
 
-            #capa_system.anonymous_student_id = # FIXME re-set the anonymous ID to this student's anonymous ID somehow?
             lcp = LoncapaProblem(
                 problem_text=self.data,
                 id=self.location.html_id(),
@@ -476,6 +477,7 @@ class CapaDescriptor(CapaFields, RawDescriptor):
 
                 elif current_answer_text.startswith('choice_'):
                     # Many problem (e.g. checkbox) report "choice_0" "choice_1" etc.
+                    # Here we transform it
 
                     # FIXME improve xpath to get the answer text directly
                     elems = lcp.tree.xpath('//*[@id="'+answer_id+'"]//*[@name="'+current_answer_text+'"]')
@@ -488,7 +490,7 @@ class CapaDescriptor(CapaFields, RawDescriptor):
                     answer_text += ("(DEBUG: orig. was. %s)" % current_answer_text)
 
                 else:
-                    # already a string with the answer
+                    # Already a string with the answer
                     answer_text = current_answer_text
 
                 return answer_text
