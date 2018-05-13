@@ -388,6 +388,10 @@ class CapaDescriptor(CapaFields, RawDescriptor):
                 assert question_id in lcp.problem_data
                 problem_data = lcp.problem_data[question_id]
                 prompt = problem_data.get('label', problem_data.get('descriptions').values())  # FIXME rename
+                if question_id == '98e6a8e915904d5389821a94e48babcf_13_1':
+                    import sys; sys.stdout = sys.__stdout__; import ipdb; ipdb.set_trace()
+                    pass
+
                 if prompt:
                     question_text = prompt.striptags()
                 else:
@@ -418,16 +422,25 @@ class CapaDescriptor(CapaFields, RawDescriptor):
                     # Get the element that probably contains the question text
                     questiontext_elem = xml_elem.getprevious()
 
-                    # Go backwards, skip <description> and other responses, because they don't contain the question
-                    skip_elems = responsetypes.registry.registered_tags() + ['description']
+                    # Go backwards looking for a <p> or <label>, but skip <description> because it doesn't
+                    # contain the question text.
+                    #
+                    # E.g if we have this:
+                    #   <p /> <description /> <optionresponse /> <optionresponse />
+                    #
+                    # then from the first optionresponse we'll end with the <p>.
+                    # If we start in the second optionresponse, we'll find another response in the way,
+                    # stop early, and instead of a question we'll report "Question 2".
+                    skip_elems = ['description']
+                    label_elems = ['p', 'label']
                     while questiontext_elem is not None and questiontext_elem.tag in skip_elems:
                         questiontext_elem = questiontext_elem.getprevious()
 
-                    if questiontext_elem is not None and questiontext_elem.tag in ['p', 'label']:
+                    if questiontext_elem is not None and questiontext_elem.tag in label_elems:
                         question_text = questiontext_elem.text
                     else:
-                        # question_text = None
-                        # For instance 'd2e35c1d294b4ba0b3b1048615605d2a_2_1' contains 2, which is used in question number 1
+                        # For instance 'd2e35c1d294b4ba0b3b1048615605d2a_2_1' contains 2,
+                        # which is used in question number 1
                         question_nr = int(question_id.split('_')[-2]) - 1
                         question_text = "Question %i" % question_nr
 
@@ -450,7 +463,7 @@ class CapaDescriptor(CapaFields, RawDescriptor):
 
                 elif type(current_answer_text) == dict:
                     from pprint import pprint, pformat
-                    return "FIXME not implement yet for dicts. " + pformat(current_answer_text)
+                    return "FIXME not implemented yet for dicts. " + pformat(current_answer_text)
                 elif current_answer_text.startswith('choice_'):
                     # FIXME improve xpath to get the answer text directly
                     elems = lcp.tree.xpath('//*[@id="'+question_id+'"]//*[@name="'+current_answer_text+'"]')
