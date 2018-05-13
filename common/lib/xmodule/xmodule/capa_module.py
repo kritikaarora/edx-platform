@@ -377,7 +377,7 @@ class CapaDescriptor(CapaFields, RawDescriptor):
                 extract_tree=False,
             )
 
-            def find_question_label_for_answer(question_id):  # FIXME fix names.   FIXME: move function. # FIXME doc
+            def find_question_label(question_id):  # FIXME fix names.   FIXME: move function. # FIXME doc
                 """
                 Obtain the most relevant question text for a particular question.
                 This is, in order:
@@ -391,12 +391,32 @@ class CapaDescriptor(CapaFields, RawDescriptor):
                 if prompt:
                     question_text = prompt.striptags()
                 else:
+                    # If no prompt, then we must look for something reseming a question ourselves
+                    xml_elems = lcp.tree.xpath('//*[@id="' + question_id + '"]')
 
-                    xml_elems = [elem for elem, data in lcp.responder_answers.iteritems() if question_id in data]
-                    assert len(xml_elems) == 1, (len(xml_elems), xml_elems, question_id, list(lcp.responder_answers.iteritems()))
+                    # FIXME old. Delete
+                    # xml_elems2 = [elem for elem, data in lcp.responder_answers.iteritems() if question_id in data]
+
+                    # import sys; sys.stdout = sys.__stdout__; import ipdb; ipdb.set_trace()
+
+
+                    if len(xml_elems) != 1:
+                        # FIXME research this case, which happens e.g. at http://localhost:18000/courses/course-v1:edX+DemoX+Demo_Course/courseware/interactive_demonstrations/basic_questions/?child=first . It happens with a drag&drop problem. Maybe it doesn't have the concept of "question". Maybe we should let each problem type define the concept of "question text"
+                        # print(xml_elems, question_id, list(lcp.responder_answers.iteritems()))
+                        print(xml_elems, question_id)
+                        import sys; sys.stdout = sys.__stdout__; import ipdb; ipdb.set_trace()
+                        return "FIXME this case isn't working. Maybe it's a special type of problem?"
+                    else:
+                        # reg = inputtypes.registry.get_class_for_tag(xml_elems[0].tag)
+                        # import sys; sys.stdout = sys.__stdout__; import ipdb; ipdb.set_trace()
+
+                        xml_elem = xml_elems[0].getparent()
+
+
+                    # assert len(xml_elems) == 1, (len(xml_elems), xml_elems, question_id, list(lcp.responder_answers.iteritems()))
 
                     # Get the element that probably contains the question text
-                    questiontext_elem = xml_elems[0].getprevious()
+                    questiontext_elem = xml_elem.getprevious()
 
                     # Go backwards, skip <description> and other responses, because they don't contain the question
                     skip_elems = responsetypes.registry.registered_tags() + ['description']
@@ -450,19 +470,22 @@ class CapaDescriptor(CapaFields, RawDescriptor):
             print("student answers", lcp.student_answers)
             # import sys; sys.stdout = sys.__stdout__; import ipdb; ipdb.set_trace()
 
-            # for question_id, orig_answers in lcp.get_question_answers().items():  # FIXME delete (it gets correct answers)
+            # for question_id, orig_answers in lcp.get_question_answers().items():  # FIXME delete (it gets "correct" answers instead of chosen ones)
             for question_id, orig_answers in lcp.student_answers.items():
                 if '_solution_' in question_id:
                     # FIXME I think this is not really a question/answer and can be skipped. But verify
+                    continue
+                elif question_id.endswith('_dynamath'):
+                    # FIXME check the case of formulae
                     continue
                 elif question_id not in lcp.problem_data:
                     print("FIXME debug this case. Maybe it happened only with the _solution_ scenario")
                     print(question_id)
                     print(lcp.problem_data)
+                    import sys; sys.stdout = sys.__stdout__; import ipdb; ipdb.set_trace()
                     raise NotImplementedError()
-                    # import sys; sys.stdout = sys.__stdout__; import ipdb; ipdb.set_trace()
 
-                question_text = find_question_label_for_answer(question_id)
+                question_text = find_question_label(question_id)
                 answer_text = find_answer_text(question_id, current_answer_text=orig_answers)
 
                 yield (user_state.username, {
