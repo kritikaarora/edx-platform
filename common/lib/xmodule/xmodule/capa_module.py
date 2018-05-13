@@ -377,47 +377,36 @@ class CapaDescriptor(CapaFields, RawDescriptor):
                 extract_tree=False,
             )
 
-            def find_question_label(question_id):  # FIXME fix names.   FIXME: move function. # FIXME doc
+            def find_question_label(answer_id):  # FIXME: move function
                 """
-                Obtain the most relevant question text for a particular question.
-                This is, in order:
+                Obtain the most relevant question text for a particular answer.
+
+                E.g. in a problem like "How much is 2+2?" "Two"/"Three"/"More than three",
+                this function returns the "How much is 2+2?" text.
+
+                It uses, in order:
                 - the question prompt, if the question has one
                 - the <p> or <label> element which precedes the choices (skipping descriptive elements)
                 - a text like "Question 5" if no other name could be found
+
+                Arguments::
+                    answer_id: a string like "98e6a8e915904d5389821a94e48babcf_13_1"
+
+                Returns:
+                    a string with the question text
                 """
-                assert question_id in lcp.problem_data
-                problem_data = lcp.problem_data[question_id]
+                assert answer_id in lcp.problem_data
+                problem_data = lcp.problem_data[answer_id]
                 prompt = problem_data.get('label', problem_data.get('descriptions').values())  # FIXME rename
-                if question_id == '98e6a8e915904d5389821a94e48babcf_13_1':
-                    import sys; sys.stdout = sys.__stdout__; import ipdb; ipdb.set_trace()
-                    pass
 
                 if prompt:
                     question_text = prompt.striptags()
                 else:
-                    # If no prompt, then we must look for something reseming a question ourselves
-                    xml_elems = lcp.tree.xpath('//*[@id="' + question_id + '"]')
-
-                    # FIXME old. Delete
-                    # xml_elems2 = [elem for elem, data in lcp.responder_answers.iteritems() if question_id in data]
-
-                    # import sys; sys.stdout = sys.__stdout__; import ipdb; ipdb.set_trace()
-
-
-                    if len(xml_elems) != 1:
-                        # FIXME research this case, which happens e.g. at http://localhost:18000/courses/course-v1:edX+DemoX+Demo_Course/courseware/interactive_demonstrations/basic_questions/?child=first . It happens with a drag&drop problem. Maybe it doesn't have the concept of "question". Maybe we should let each problem type define the concept of "question text"
-                        # print(xml_elems, question_id, list(lcp.responder_answers.iteritems()))
-                        print(xml_elems, question_id)
-                        import sys; sys.stdout = sys.__stdout__; import ipdb; ipdb.set_trace()
-                        return "FIXME this case isn't working. Maybe it's a special type of problem?"
-                    else:
-                        # reg = inputtypes.registry.get_class_for_tag(xml_elems[0].tag)
-                        # import sys; sys.stdout = sys.__stdout__; import ipdb; ipdb.set_trace()
-
-                        xml_elem = xml_elems[0].getparent()
-
-
-                    # assert len(xml_elems) == 1, (len(xml_elems), xml_elems, question_id, list(lcp.responder_answers.iteritems()))
+                    # If no prompt, then we must look for something resembling a question ourselves
+                    # Starting from the answer we go up and backwards
+                    xml_elems = lcp.tree.xpath('//*[@id="' + answer_id + '"]')
+                    assert len(xml_elems) == 1
+                    xml_elem = xml_elems[0].getparent()
 
                     # Get the element that probably contains the question text
                     questiontext_elem = xml_elem.getprevious()
@@ -431,32 +420,28 @@ class CapaDescriptor(CapaFields, RawDescriptor):
                     # then from the first optionresponse we'll end with the <p>.
                     # If we start in the second optionresponse, we'll find another response in the way,
                     # stop early, and instead of a question we'll report "Question 2".
-                    skip_elems = ['description']
-                    label_elems = ['p', 'label']
-                    while questiontext_elem is not None and questiontext_elem.tag in skip_elems:
+                    SKIP_ELEMS = ['description']
+                    LABEL_ELEMS = ['p', 'label']
+                    while questiontext_elem is not None and questiontext_elem.tag in SKIP_ELEMS:
                         questiontext_elem = questiontext_elem.getprevious()
 
-                    if questiontext_elem is not None and questiontext_elem.tag in label_elems:
+                    if questiontext_elem is not None and questiontext_elem.tag in LABEL_ELEMS:
                         question_text = questiontext_elem.text
                     else:
                         # For instance 'd2e35c1d294b4ba0b3b1048615605d2a_2_1' contains 2,
                         # which is used in question number 1
-                        question_nr = int(question_id.split('_')[-2]) - 1
+                        question_nr = int(answer_id.split('_')[-2]) - 1
                         question_text = "Question %i" % question_nr
 
                 return question_text
 
-            def find_answer_text(question_id, current_answer_text):  # FIXME fix names.   FIXME: move function. # FIXME doc
-                # import sys; sys.stdout = sys.__stdout__; import ipdb; ipdb.set_trace()
-
-                # if question_id == '98e6a8e915904d5389821a94e48babcf_11_1':
-                #     import sys; sys.stdout = sys.__stdout__; import ipdb; ipdb.set_trace()
+            def find_answer_text(answer_id, current_answer_text):  # FIXME fix names.   FIXME: move function. # FIXME doc
 
                 if type(current_answer_text) == list:
                     # we need to join them
                     answer_text = ""
                     for choice_number in current_answer_text:
-                        choice_text = find_answer_text(question_id, choice_number)
+                        choice_text = find_answer_text(answer_id, choice_number)
                         answer_text += choice_text + ", "
                         # print("Adding %s, and now I have %s" % (choice_text, answer_text))
                     return answer_text
@@ -466,7 +451,7 @@ class CapaDescriptor(CapaFields, RawDescriptor):
                     return "FIXME not implemented yet for dicts. " + pformat(current_answer_text)
                 elif current_answer_text.startswith('choice_'):
                     # FIXME improve xpath to get the answer text directly
-                    elems = lcp.tree.xpath('//*[@id="'+question_id+'"]//*[@name="'+current_answer_text+'"]')
+                    elems = lcp.tree.xpath('//*[@id="'+answer_id+'"]//*[@name="'+current_answer_text+'"]')
                     assert len(elems) == 1
                     choice = elems[0]
                     choicegroup = choice.getparent()
@@ -479,30 +464,26 @@ class CapaDescriptor(CapaFields, RawDescriptor):
                     # already a string with the answer
                     return current_answer_text
 
-            # FIXME get the chosen answer, not the right one
-            print("student answers", lcp.student_answers)
-            # import sys; sys.stdout = sys.__stdout__; import ipdb; ipdb.set_trace()
 
-            # for question_id, orig_answers in lcp.get_question_answers().items():  # FIXME delete (it gets "correct" answers instead of chosen ones)
-            for question_id, orig_answers in lcp.student_answers.items():
-                if '_solution_' in question_id:
+            for answer_id, orig_answers in lcp.student_answers.items():
+                if '_solution_' in answer_id:
                     # FIXME I think this is not really a question/answer and can be skipped. But verify
                     continue
-                elif question_id.endswith('_dynamath'):
+                elif answer_id.endswith('_dynamath'):
                     # FIXME check the case of formulae
                     continue
-                elif question_id not in lcp.problem_data:
+                elif answer_id not in lcp.problem_data:
                     print("FIXME debug this case. Maybe it happened only with the _solution_ scenario")
-                    print(question_id)
+                    print(answer_id)
                     print(lcp.problem_data)
                     import sys; sys.stdout = sys.__stdout__; import ipdb; ipdb.set_trace()
                     raise NotImplementedError()
 
-                question_text = find_question_label(question_id)
-                answer_text = find_answer_text(question_id, current_answer_text=orig_answers)
+                question_text = find_question_label(answer_id)
+                answer_text = find_answer_text(answer_id, current_answer_text=orig_answers)
 
                 yield (user_state.username, {
-                    "Question ID": question_id,
+                    "Answer ID": answer_id,
                     "Question": question_text,
                     "Answer": answer_text,
                 })
