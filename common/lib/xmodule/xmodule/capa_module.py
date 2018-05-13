@@ -378,123 +378,6 @@ class CapaDescriptor(CapaFields, RawDescriptor):
                 extract_tree=False,
             )
 
-            def find_question_label(answer_id):  # FIXME: move function
-                """
-                Obtain the most relevant question text for a particular answer.
-
-                E.g. in a problem like "How much is 2+2?" "Two"/"Three"/"More than three",
-                this function returns the "How much is 2+2?" text.
-
-                It uses, in order:
-                - the question prompt, if the question has one
-                - the <p> or <label> element which precedes the choices (skipping descriptive elements)
-                - a text like "Question 5" if no other name could be found
-
-                Arguments::
-                    answer_id: a string like "98e6a8e915904d5389821a94e48babcf_13_1"
-
-                Returns:
-                    a string with the question text
-                """
-                assert answer_id in lcp.problem_data
-                problem_data = lcp.problem_data[answer_id]
-                prompt = problem_data.get('label', problem_data.get('descriptions').values())  # FIXME rename
-
-                if prompt:
-                    question_text = prompt.striptags()
-                else:
-                    # If no prompt, then we must look for something resembling a question ourselves
-                    #
-                    # We have a structure like:
-                    #
-                    # <p />
-                    # <optionresponse id="a0effb954cca4759994f1ac9e9434bf4_2">
-                    #   <optioninput id="a0effb954cca4759994f1ac9e9434bf4_3_1" />
-                    # <optionresponse>
-                    #
-                    # Starting from  answer (the optioninput in this example) we go up and backwards
-                    xml_elems = lcp.tree.xpath('//*[@id="' + answer_id + '"]')
-                    assert len(xml_elems) == 1
-                    xml_elem = xml_elems[0].getparent()
-
-                    # Get the element that probably contains the question text
-                    questiontext_elem = xml_elem.getprevious()
-
-                    # Go backwards looking for a <p> or <label>, but skip <description> because it doesn't
-                    # contain the question text.
-                    #
-                    # E.g if we have this:
-                    #   <p /> <description /> <optionresponse /> <optionresponse />
-                    #
-                    # then from the first optionresponse we'll end with the <p>.
-                    # If we start in the second optionresponse, we'll find another response in the way,
-                    # stop early, and instead of a question we'll report "Question 2".
-                    SKIP_ELEMS = ['description']
-                    LABEL_ELEMS = ['p', 'label']
-                    while questiontext_elem is not None and questiontext_elem.tag in SKIP_ELEMS:
-                        questiontext_elem = questiontext_elem.getprevious()
-
-                    if questiontext_elem is not None and questiontext_elem.tag in LABEL_ELEMS:
-                        question_text = questiontext_elem.text
-                    else:
-                        # For instance 'd2e35c1d294b4ba0b3b1048615605d2a_2_1' contains 2,
-                        # which is used in question number 1
-                        question_nr = int(answer_id.split('_')[-2]) - 1
-                        question_text = "Question %i" % question_nr
-
-                return question_text
-
-            def find_answer_text(answer_id, current_answer_text):  # FIXME: move function
-                """
-                Process a raw answer text to make it more meaningful.
-
-                E.g. in a choice problem like "How much is 2+2?" "Two"/"Three"/"More than three",
-                this function will transform "choice_1" (which is the internal response given by
-                many capa methods) to the human version, e.g. "More than three".
-
-                If the answers are multiple (e.g. because they're from a multiple choice problem),
-                this will join them with a comma.
-
-                If passed a normal string which is already the answer, it doesn't change it.
-
-                Arguments:
-                    answer_id: a string like "98e6a8e915904d5389821a94e48babcf_13_1"
-                    current_answer_text: a data structure as found in `LoncapaProblem.student_answers`
-                        which represents the best response we have until now
-
-                Returns:
-                    a string with the human version of the response
-                """
-                if type(current_answer_text) == list:
-                    # Multiple answers. This case happens e.g. in multiple choice problems
-                    answer_text = ", ".join([
-                        find_answer_text(answer_id, answer) for answer in current_answer_text
-                    ])
-
-                elif type(current_answer_text) == dict:
-                    from pprint import pprint, pformat
-                    answer_text = "FIXME not implemented yet for dicts. " + pformat(current_answer_text)
-
-                elif current_answer_text.startswith('choice_'):
-                    # Many problem (e.g. checkbox) report "choice_0" "choice_1" etc.
-                    # Here we transform it
-
-                    # FIXME improve xpath to get the answer text directly
-                    elems = lcp.tree.xpath('//*[@id="'+answer_id+'"]//*[@name="'+current_answer_text+'"]')
-                    assert len(elems) == 1
-                    choice = elems[0]
-                    choicegroup = choice.getparent()
-                    input_cls = inputtypes.registry.get_class_for_tag(choicegroup.tag)
-                    choices_map = dict(input_cls.extract_choices(choicegroup, lcp.capa_system.i18n, text_only=True))
-                    answer_text = choices_map[current_answer_text]
-                    answer_text += ("(DEBUG: orig. was. %s)" % current_answer_text)
-
-                else:
-                    # Already a string with the answer
-                    answer_text = current_answer_text
-
-                return answer_text
-
 
             for answer_id, orig_answers in lcp.student_answers.items():
                 if '_solution_' in answer_id:
@@ -507,8 +390,8 @@ class CapaDescriptor(CapaFields, RawDescriptor):
                 # The rest of items are answers for which we have information
                 assert answer_id in lcp.problem_data
 
-                question_text = find_question_label(answer_id)
-                answer_text = find_answer_text(answer_id, current_answer_text=orig_answers)
+                question_text = lcp.find_question_label(answer_id)
+                answer_text = lcp.find_answer_text(answer_id, current_answer_text=orig_answers)
 
                 yield (user_state.username, {
                     "Answer ID": answer_id,
