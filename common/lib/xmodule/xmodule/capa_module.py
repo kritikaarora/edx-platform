@@ -375,11 +375,10 @@ class CapaDescriptor(CapaFields, RawDescriptor):
             )
 
             for answer_id, orig_answers in lcp.student_answers.items():
-                if '_solution_' in answer_id:
-                    # FIXME I think this is not really a question/answer and can be skipped. But verify
-                    continue
-                elif answer_id.endswith('_dynamath'):
-                    # FIXME check the case of formulae
+                # Some types of problems have data in lcp.student_answers that isn't in lcp.problem_data.
+                # E.g. formulae do this to store the MathML version of the answer.
+                # We exclude these rows from the report because we only need the text-only answer.
+                if answer_id.endswith('_dynamath'):
                     continue
 
                 # The rest of items are answers for which we have information
