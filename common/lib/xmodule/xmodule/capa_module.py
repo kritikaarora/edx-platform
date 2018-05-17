@@ -344,7 +344,7 @@ class CapaDescriptor(CapaFields, RawDescriptor):
             matlab_api_key=None,
         )
 
-        for idx, user_state in enumerate(states):
+        for idx, user_state in enumerate(user_state_iterator):
 
             if limit_responses and idx >= limit_responses:
                 break
@@ -371,7 +371,6 @@ class CapaDescriptor(CapaFields, RawDescriptor):
                 # We'll still be able to find particular data in the XML when we need it
                 extract_tree=False,
             )
-
 
             for answer_id, orig_answers in lcp.student_answers.items():
                 if '_solution_' in answer_id:
