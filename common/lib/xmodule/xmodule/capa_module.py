@@ -327,8 +327,10 @@ class CapaDescriptor(CapaFields, RawDescriptor):
         from capa.capa_problem import LoncapaProblem, LoncapaSystem
         capa_system = LoncapaSystem(
             ajax_url=None,
-            # TODO we could also set anonymous_student_id to the anonymous ID
-            # of the user which answered each problem
+            # TODO set anonymous_student_id to the anonymous ID of the user which answered each problem
+            # Anonymous ID is required for Matlab, CodeResponse, and some custom problems that include
+            # '$anonymous_student_id' in their XML.
+            # For the purposes of this report, we don't need to support those use cases.
             anonymous_student_id=None,
             cache=None,
             can_execute_unsafe_code=lambda: None,
