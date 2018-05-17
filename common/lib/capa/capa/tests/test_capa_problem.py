@@ -593,6 +593,10 @@ class CAPAMultiInputProblemTest(unittest.TestCase):
             self.assertEqual(len(description_element), 1)
             self.assertEqual(description_element[0].text, descriptions[index])
 
+@ddt.ddt
+class CAPAProblemReportHelpersTest(unittest.TestCase):
+    """ TestCase for CAPA methods for finding question labels and answer text """
+
     @ddt.data(
         ('answerid_2_1', 'label', 'label'),
         ('answerid_2_2', 'label <some>html</some>', 'label html'),
@@ -613,3 +617,52 @@ class CAPAMultiInputProblemTest(unittest.TestCase):
         }
         with patch.object(problem, 'problem_data', mock_problem_data):
             self.assertEqual(problem.find_question_label(answer_id), stripped_label)
+
+
+    @ddt.data(None, dict(), [None])
+    def test_find_answer_test_not_implemented(self, current_answer):
+        problem = new_loncapa_problem('<problem/>')
+        self.assertRaises(problem.find_answer_text('', current_answer), NotImplementedError)
+
+    @ddt.data(
+        (['answer1', 'answer2'], 'answer1, answer2'),
+    )
+    @ddt.unpack
+    def test_find_answer_test_list(self, current_answer, answer_text):
+        problem = new_loncapa_problem('<problem/>')
+        self.assertEquals(problem.find_answer_text('', current_answer), answer_text)
+
+
+    @ddt.data(
+        ('1_2_1', 'choice_0', 'over-suspicious'),
+        ('1_2_1', 'choice_1', 'funny'),
+        ('1_3_1', 'choice_0', 'The iPad'),
+        ('1_3_1', 'choice_2', 'The iPod'),
+        ('1_3_1', ['choice_0', 'choice_1'], 'The iPad, Napster'),
+        ('1_4_1', 'yellow', 'yellow'),
+        ('1_4_1', 'blue', 'blue'),
+    )
+    @ddt.unpack
+    def test_find_answer_test_choices(self, answer_id, choice_id, answer_text):
+        problem = new_loncapa_problem("""
+        <problem>
+            <choiceresponse>
+                <checkboxgroup label="Select the correct synonym of paranoid?">
+                    <choice correct="true">over-suspicious</choice>
+                    <choice correct="false">funny</choice>
+                </checkboxgroup>
+            </choiceresponse>
+            <multiplechoiceresponse>
+                <choicegroup type="MultipleChoice">
+                    <choice correct="false">The iPad</choice>
+                    <choice correct="false">Napster</choice>
+                    <choice correct="true">The iPod</choice>
+                </choicegroup>
+            </multiplechoiceresponse>
+            <optionresponse>
+                <optioninput options="('yellow','blue','green')" correct="blue" label="Color_1"/>
+            </optionresponse>
+        </problem>
+        """)
+        self.assertEquals(problem.find_answer_text(answer_id, choice_id), answer_text)
+
