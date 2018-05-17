@@ -4,9 +4,11 @@ Test capa problem.
 import ddt
 import textwrap
 from lxml import etree
+from mock import patch
 import unittest
 
 from capa.tests.helpers import new_loncapa_problem
+from openedx.core.djangolib.markup import HTML
 
 
 @ddt.ddt
@@ -590,3 +592,24 @@ class CAPAMultiInputProblemTest(unittest.TestCase):
             description_element = multi_inputs_group.xpath('//p[@id="{}"]'.format(description_id))
             self.assertEqual(len(description_element), 1)
             self.assertEqual(description_element[0].text, descriptions[index])
+
+    @ddt.data(
+        ('answerid_2_1', 'label', 'label'),
+        ('answerid_2_2', 'label <some>html</some>', 'label html'),
+        ('answerid_2_2', '<more html="yes"/>label <some>html</some>', 'label html'),
+        ('answerid_2_3', None, 'Question 1'),
+        ('answerid_2_3', '', 'Question 1'),
+        ('answerid_3_3', '', 'Question 2'),
+    )
+    @ddt.unpack
+    def test_find_question_label(self, answer_id, label, stripped_label):
+        problem = new_loncapa_problem(
+            '<problem><some-problem id="{}"/></problem>'.format(answer_id)
+        )
+        mock_problem_data = {
+            answer_id: {
+                'label': HTML(label) if label else ''
+            }
+        }
+        with patch.object(problem, 'problem_data', mock_problem_data):
+            self.assertEqual(problem.find_question_label(answer_id), stripped_label)
