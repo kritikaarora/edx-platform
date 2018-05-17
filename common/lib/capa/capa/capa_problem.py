@@ -513,9 +513,9 @@ class LoncapaProblem(object):
         Returns:
             a string with the question text
         """
+        # Some questions define a prompt with this format:   >>This is a prompt<<
         assert answer_id in self.problem_data
-        problem_data = self.problem_data[answer_id]
-        prompt = problem_data.get('label', problem_data.get('descriptions').values())  # FIXME rename
+        prompt = self.problem_data[answer_id].get('label')
 
         if prompt:
             question_text = prompt.striptags()
