@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Implements basics of Capa, including class CapaModule."""
 import cgi
 import copy
@@ -12,7 +11,6 @@ import struct
 import sys
 import traceback
 
-from lxml import etree
 from django.conf import settings
 # We don't want to force a dependency on datadog, so make the import conditional
 try:
@@ -25,7 +23,7 @@ from six import text_type
 
 from capa.capa_problem import LoncapaProblem, LoncapaSystem
 from capa.inputtypes import Status
-from capa.responsetypes import StudentInputError, ResponseError, LoncapaProblemError, registry
+from capa.responsetypes import StudentInputError, ResponseError, LoncapaProblemError
 from capa.util import convert_files_to_filenames, get_inner_html_from_xpath
 from xblock.fields import Boolean, Dict, Float, Integer, Scope, String, XMLString
 from xblock.scorable import ScorableXBlockMixin, Score
@@ -700,15 +698,6 @@ class CapaMixin(ScorableXBlockMixin, CapaFields):
 
         html = self.remove_tags_from_html(html)
 
-        # FIXME add report data here, just to test. Disabled by default to make the automated tests pass
-        if False:
-            from courseware.user_state_client import DjangoXBlockUserStateClient
-            user_state_client = DjangoXBlockUserStateClient()
-            rep = self.descriptor.generate_report_data(user_state_client.iter_all_for_block(self.location))
-            rep = list(rep)
-            from pprint import pprint, pformat
-            html += "<h1>report data here</h1><pre>" + pformat(rep) + "</pre>"
-
         # Enable/Disable Submit button if should_enable_submit_button returns True/False.
         submit_button = self.submit_button_name()
         submit_button_submitting = self.submit_button_submitting_name()
@@ -1169,7 +1158,6 @@ class CapaMixin(ScorableXBlockMixin, CapaFields):
           {'success' : 'correct' | 'incorrect' | AJAX alert msg string,
            'contents' : html}
         """
-
         event_info = dict()
         event_info['state'] = self.lcp.get_state()
         event_info['problem_id'] = text_type(self.location)

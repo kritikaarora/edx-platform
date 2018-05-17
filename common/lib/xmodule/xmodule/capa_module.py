@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Implements basics of Capa, including class CapaModule."""
 import json
 import logging
@@ -10,7 +9,6 @@ from pkg_resources import resource_string
 
 import dogstats_wrapper as dog_stats_api
 from capa import responsetypes
-from capa import inputtypes
 from xmodule.exceptions import NotFoundError, ProcessingError
 from xmodule.raw_module import RawDescriptor
 from xmodule.util.misc import escape_html_characters
