@@ -318,13 +318,18 @@ class CapaDescriptor(CapaFields, RawDescriptor):
 
         Returns:
             each call returns a tuple like:
-            ("username", {"Question": "2 + 2 equals how many?", "Answer": "Four"})
+            ("username", {
+                           "Question": "2 + 2 equals how many?",
+                           "Answer": "Four",
+                           "Answer ID": "98e6a8e915904d5389821a94e48babcf_10_1"
+            })
         """
+
+        from capa.capa_problem import LoncapaProblem, LoncapaSystem
 
         if self.category != 'problem':
             raise NotImplementedError()
 
-        from capa.capa_problem import LoncapaProblem, LoncapaSystem
         capa_system = LoncapaSystem(
             ajax_url=None,
             # TODO set anonymous_student_id to the anonymous ID of the user which answered each problem
