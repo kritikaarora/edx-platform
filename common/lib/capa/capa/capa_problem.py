@@ -588,27 +588,25 @@ class LoncapaProblem(object):
                 self.find_answer_text(answer_id, answer) for answer in current_answer_text
             ])
 
-        elif type(current_answer_text) == dict:
-            from pprint import pprint, pformat
-            answer_text = "FIXME not implemented yet for dicts. " + pformat(current_answer_text)
-
         elif current_answer_text.startswith('choice_'):
             # Many problem (e.g. checkbox) report "choice_0" "choice_1" etc.
             # Here we transform it
-
-            # FIXME improve xpath to get the answer text directly
-            elems = self.tree.xpath('//*[@id="'+answer_id+'"]//*[@name="'+current_answer_text+'"]')
+            elems = self.tree.xpath('//*[@id="{answer_id}"]//*[@name="{choice_number}"]'.format(
+                answer_id=answer_id,
+                choice_number=current_answer_text
+            ))
             assert len(elems) == 1
-            choice = elems[0]
-            choicegroup = choice.getparent()
+            choicegroup = elems[0].getparent()
             input_cls = inputtypes.registry.get_class_for_tag(choicegroup.tag)
             choices_map = dict(input_cls.extract_choices(choicegroup, self.capa_system.i18n, text_only=True))
             answer_text = choices_map[current_answer_text]
-            answer_text += ("(DEBUG: orig. was. %s)" % current_answer_text)
 
-        else:
+        elif isinstance(current_answer_text, basestring):
             # Already a string with the answer
             answer_text = current_answer_text
+
+        else:
+            raise NotImplementedError()
 
         return answer_text
 
