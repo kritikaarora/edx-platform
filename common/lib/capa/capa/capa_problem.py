@@ -586,7 +586,7 @@ class LoncapaProblem(object):
         Returns:
             a string with the human version of the response
         """
-        if type(current_answer) == list:
+        if isinstance(current_answer, list):
             # Multiple answers. This case happens e.g. in multiple choice problems
             answer_text = ", ".join([
                 self.find_answer_text(answer_id, answer) for answer in current_answer
