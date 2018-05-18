@@ -394,7 +394,7 @@ class CapaDescriptor(CapaFields, RawDescriptor):
                     return
 
                 question_text = lcp.find_question_label(answer_id)
-                answer_text = lcp.find_answer_text(answer_id, current_answer_text=orig_answers)
+                answer_text = lcp.find_answer_text(answer_id, current_answer=orig_answers)
 
                 count += 1
                 yield (user_state.username, {

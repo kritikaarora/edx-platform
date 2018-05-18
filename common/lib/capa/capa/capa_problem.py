@@ -563,7 +563,7 @@ class LoncapaProblem(object):
 
         return question_text
 
-    def find_answer_text(self, answer_id, current_answer_text):
+    def find_answer_text(self, answer_id, current_answer):
         """
         Process a raw answer text to make it more meaningful.
 
@@ -580,34 +580,34 @@ class LoncapaProblem(object):
 
         Arguments:
             answer_id: a string like "98e6a8e915904d5389821a94e48babcf_13_1"
-            current_answer_text: a data structure as found in `LoncapaProblem.student_answers`
+            current_answer: a data structure as found in `LoncapaProblem.student_answers`
                 which represents the best response we have until now
 
         Returns:
             a string with the human version of the response
         """
-        if type(current_answer_text) == list:
+        if type(current_answer) == list:
             # Multiple answers. This case happens e.g. in multiple choice problems
             answer_text = ", ".join([
-                self.find_answer_text(answer_id, answer) for answer in current_answer_text
+                self.find_answer_text(answer_id, answer) for answer in current_answer
             ])
 
-        elif isinstance(current_answer_text, basestring) and current_answer_text.startswith('choice_'):
+        elif isinstance(current_answer, basestring) and current_answer.startswith('choice_'):
             # Many problem (e.g. checkbox) report "choice_0" "choice_1" etc.
             # Here we transform it
             elems = self.tree.xpath('//*[@id="{answer_id}"]//*[@name="{choice_number}"]'.format(
                 answer_id=answer_id,
-                choice_number=current_answer_text
+                choice_number=current_answer
             ))
             assert len(elems) == 1
             choicegroup = elems[0].getparent()
             input_cls = inputtypes.registry.get_class_for_tag(choicegroup.tag)
             choices_map = dict(input_cls.extract_choices(choicegroup, self.capa_system.i18n, text_only=True))
-            answer_text = choices_map[current_answer_text]
+            answer_text = choices_map[current_answer]
 
-        elif isinstance(current_answer_text, basestring):
+        elif isinstance(current_answer, basestring):
             # Already a string with the answer
-            answer_text = current_answer_text
+            answer_text = current_answer
 
         else:
             raise NotImplementedError()
