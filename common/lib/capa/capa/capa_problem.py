@@ -574,6 +574,8 @@ class LoncapaProblem(object):
 
         If passed a normal string which is already the answer, it doesn't change it.
 
+        TODO merge with response_a11y_data?
+
         Arguments:
             answer_id: a string like "98e6a8e915904d5389821a94e48babcf_13_1"
             current_answer_text: a data structure as found in `LoncapaProblem.student_answers`
