@@ -328,6 +328,10 @@ class CapaDescriptor(CapaFields, RawDescriptor):
         if self.category != 'problem':
             raise NotImplementedError()
 
+        if limit_responses == 0:
+            # Don't even start collecting answers
+            return
+
         capa_system = LoncapaSystem(
             ajax_url=None,
             # TODO set anonymous_student_id to the anonymous ID of the user which answered each problem
@@ -349,10 +353,8 @@ class CapaDescriptor(CapaFields, RawDescriptor):
             matlab_api_key=None,
         )
 
-        for idx, user_state in enumerate(user_state_iterator):
-
-            if limit_responses and idx >= limit_responses:
-                break
+        count = 0
+        for user_state in user_state_iterator:
 
             if 'student_answers' not in user_state.state:
                 continue
@@ -387,9 +389,14 @@ class CapaDescriptor(CapaFields, RawDescriptor):
                 # The rest of items are answers for which we have information
                 assert answer_id in lcp.problem_data
 
+                if limit_responses and count >= limit_responses:
+                    # End the iterator here
+                    return
+
                 question_text = lcp.find_question_label(answer_id)
                 answer_text = lcp.find_answer_text(answer_id, current_answer_text=orig_answers)
 
+                count += 1
                 yield (user_state.username, {
                     "Answer ID": answer_id,
                     "Question": question_text,
