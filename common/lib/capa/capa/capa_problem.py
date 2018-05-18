@@ -592,7 +592,7 @@ class LoncapaProblem(object):
                 self.find_answer_text(answer_id, answer) for answer in current_answer_text
             ])
 
-        elif current_answer_text.startswith('choice_'):
+        elif isinstance(current_answer_text, basestring) and current_answer_text.startswith('choice_'):
             # Many problem (e.g. checkbox) report "choice_0" "choice_1" etc.
             # Here we transform it
             elems = self.tree.xpath('//*[@id="{answer_id}"]//*[@name="{choice_number}"]'.format(
