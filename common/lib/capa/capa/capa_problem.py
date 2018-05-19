@@ -558,7 +558,6 @@ class LoncapaProblem(object):
                 # which is used in question number 1 (see example XML in comment above)
                 # There's no question 0 (question IDs start at 1, answer IDs at 2)
                 question_nr = int(answer_id.split('_')[-2]) - 1
-                assert question_nr >= 1
                 question_text = "Question %i" % question_nr
 
         return question_text
