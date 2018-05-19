@@ -618,11 +618,10 @@ class CAPAProblemReportHelpersTest(unittest.TestCase):
         with patch.object(problem, 'problem_data', mock_problem_data):
             self.assertEqual(problem.find_question_label(answer_id), stripped_label)
 
-
     @ddt.data(None, dict(), [None])
     def test_find_answer_test_not_implemented(self, current_answer):
         problem = new_loncapa_problem('<problem/>')
-        self.assertRaises(problem.find_answer_text('', current_answer), NotImplementedError)
+        self.assertRaises(NotImplementedError, problem.find_answer_text, '', current_answer)
 
     @ddt.data(
         ('1_2_1', 'choice_0', 'over-suspicious'),
