@@ -311,7 +311,7 @@ class CapaDescriptor(CapaFields, RawDescriptor):
             user_state_iterator: iterator over UserStateClient objects.
                 E.g. the result of user_state_client.iter_all_for_block(block_key)
 
-            limit_responses (int/None): maximum number of responses to include.
+            limit_responses (int|None): maximum number of responses to include.
                 Set to None (default) to include all.
 
         Returns:
