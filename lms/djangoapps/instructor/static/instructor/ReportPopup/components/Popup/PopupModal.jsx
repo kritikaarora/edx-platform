@@ -25,7 +25,7 @@ export const PopupModal = ({open, onHide, message, error, inProgress, succeeded,
         if (reportPath == null) {
             if (inProgress) {
                 progress = (
-                    <div class="title">
+                    <div className={"title"}>
                         <span className={"fa fa-refresh fa-spin fa-fw"}/>
                         <b>{gettext("Your report is being created...")}</b>
                     </div>

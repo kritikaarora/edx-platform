@@ -18,7 +18,7 @@ export default class ProblemBrowserWrapper extends React.Component {
 
         return (
             <div>
-                <ProblemBrowser {...this.props} />
+                <ProblemBrowser courseId={this.props.courseId} excludeBlockTypes={this.props.excludeBlockTypes} />
                 {reportPopup}
             </div>
         );

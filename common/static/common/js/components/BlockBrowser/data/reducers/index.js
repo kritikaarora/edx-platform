@@ -1,6 +1,6 @@
 import {combineReducers} from 'redux';
 import {courseBlocksActions} from '../actions/constants';
-import {popupTask} from "../../../ReportPopup/data/reducers";
+import {popupTask} from "../../../../../../../../lms/djangoapps/instructor/static/instructor/ReportPopup/data/reducers";
 
 export const buildBlockTree = (blocks, excludeBlockTypes) => {
     if (!(blocks && blocks.root)) return null;
