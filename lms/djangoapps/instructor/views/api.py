@@ -2575,7 +2575,7 @@ def export_ora2_summary(request, course_id):
     """
     course_key = CourseKey.from_string(course_id)
     report_type = _('ORA summary')
-    lms.djangoapps.instructor_task.api.submit_export_ora2_summary(request, course_key)
+    task_api.submit_export_ora2_summary(request, course_key)
     success_status = SUCCESS_MESSAGE_TEMPLATE.format(report_type=report_type)
 
     return JsonResponse({"status": success_status})
