@@ -2713,10 +2713,10 @@ class TestInstructorOra2Report(SharedModuleStoreTestCase):
         if os.path.exists(settings.GRADES_DOWNLOAD['ROOT_PATH']):
             shutil.rmtree(settings.GRADES_DOWNLOAD['ROOT_PATH'])
 
-    @ddt.data([
+    @ddt.data(
         'lms.djangoapps.instructor_task.tasks_helper.misc.OraAggregateData.collect_ora2_data',
         'lms.djangoapps.instructor_task.tasks_helper.misc.OraAggregateData.collect_ora2_data'
-    ])
+    )
     def test_report_fails_if_error(self, data_collector_module):
         with patch(data_collector_module) as mock_collect_data:
             mock_collect_data.side_effect = KeyError
@@ -2727,10 +2727,10 @@ class TestInstructorOra2Report(SharedModuleStoreTestCase):
                 response = upload_ora2_data(None, None, self.course.id, None, 'generated')
                 self.assertEqual(response, UPDATE_STATUS_FAILED)
 
-    @ddt.data([
+    @ddt.data(
         'lms.djangoapps.instructor_task.tasks_helper.misc.OraAggregateData.collect_ora2_data',
         'lms.djangoapps.instructor_task.tasks_helper.misc.OraAggregateData.collect_ora2_data'
-    ])
+    )
     def test_report_stores_results(self, data_collector_module):
         with freeze_time('2001-01-01 00:00:00'):
             test_header = ['field1', 'field2']

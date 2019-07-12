@@ -333,4 +333,3 @@ def _upload_ora2_data_common(
     TASK_LOG.info(u'%s, Task type: %s, Upload complete.', task_info_string, action_name)
 
     return UPDATE_STATUS_SUCCEEDED
-
