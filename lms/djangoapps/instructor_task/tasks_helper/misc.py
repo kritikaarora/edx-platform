@@ -251,7 +251,7 @@ def upload_ora2_data(
 
     return _upload_ora2_data_common(
         _xmodule_instance_args, _entry_id, course_id, _task_input, action_name,
-        'data', lambda: OraAggregateData.collect_ora2_data(course_id)
+        u'data', lambda: OraAggregateData.collect_ora2_data(course_id)
     )
 
 
@@ -264,7 +264,7 @@ def upload_ora2_summary(
 
     return _upload_ora2_data_common(
         _xmodule_instance_args, _entry_id, course_id, _task_input, action_name,
-        'summary', lambda: OraAggregateData.collect_ora2_summary(course_id)
+        u'summary', lambda: OraAggregateData.collect_ora2_summary(course_id)
     )
 
 
@@ -328,7 +328,7 @@ def _upload_ora2_data_common(
 
     upload_csv_to_report_store(rows, 'ORA_{}'.format(report_name), course_id, start_date)
 
-    curr_step = {'step': 'Finalizing ORA {} report'.format(report_name)}
+    curr_step = {'step': u'Finalizing ORA {} report'.format(report_name)}
     task_progress.update_task_state(extra_meta=curr_step)
     TASK_LOG.info(u'%s, Task type: %s, Upload complete.', task_info_string, action_name)
 
