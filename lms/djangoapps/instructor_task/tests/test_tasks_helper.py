@@ -2718,7 +2718,7 @@ class TestInstructorOra2Report(SharedModuleStoreTestCase):
         ('lms.djangoapps.instructor_task.tasks_helper.misc.OraAggregateData.collect_ora2_data', upload_ora2_data),
         ('lms.djangoapps.instructor_task.tasks_helper.misc.OraAggregateData.collect_ora2_summary', upload_ora2_summary),
     )
-    @ddt.unpack()
+    @ddt.unpack
     def test_report_fails_if_error(self, data_collector_module, upload_func):
         with patch(data_collector_module) as mock_collect_data:
             mock_collect_data.side_effect = KeyError
