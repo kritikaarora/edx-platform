@@ -2715,17 +2715,18 @@ class TestInstructorOra2Report(SharedModuleStoreTestCase):
             shutil.rmtree(settings.GRADES_DOWNLOAD['ROOT_PATH'])
 
     @ddt.data(
-        'lms.djangoapps.instructor_task.tasks_helper.misc.OraAggregateData.collect_ora2_data',
-        'lms.djangoapps.instructor_task.tasks_helper.misc.OraAggregateData.collect_ora2_summary'
+        ('lms.djangoapps.instructor_task.tasks_helper.misc.OraAggregateData.collect_ora2_data', upload_ora2_data),
+        ('lms.djangoapps.instructor_task.tasks_helper.misc.OraAggregateData.collect_ora2_summary', upload_ora2_summary),
     )
-    def test_report_fails_if_error(self, data_collector_module):
+    @ddt.unpack()
+    def test_report_fails_if_error(self, data_collector_module, upload_func):
         with patch(data_collector_module) as mock_collect_data:
             mock_collect_data.side_effect = KeyError
 
             with patch('lms.djangoapps.instructor_task.tasks_helper.runner._get_current_task') as mock_current_task:
                 mock_current_task.return_value = self.current_task
 
-                response = upload_ora2_data(None, None, self.course.id, None, 'generated')
+                response = upload_func(None, None, self.course.id, None, 'generated')
                 self.assertEqual(response, UPDATE_STATUS_FAILED)
 
     def test_report_stores_results(self):
