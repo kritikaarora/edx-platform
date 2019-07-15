@@ -2715,7 +2715,7 @@ class TestInstructorOra2Report(SharedModuleStoreTestCase):
 
     @ddt.data(
         'lms.djangoapps.instructor_task.tasks_helper.misc.OraAggregateData.collect_ora2_data',
-        'lms.djangoapps.instructor_task.tasks_helper.misc.OraAggregateData.collect_ora2_data'
+        'lms.djangoapps.instructor_task.tasks_helper.misc.OraAggregateData.collect_ora2_summary'
     )
     def test_report_fails_if_error(self, data_collector_module):
         with patch(data_collector_module) as mock_collect_data:
@@ -2729,19 +2729,17 @@ class TestInstructorOra2Report(SharedModuleStoreTestCase):
 
     @ddt.data(
         'lms.djangoapps.instructor_task.tasks_helper.misc.OraAggregateData.collect_ora2_data',
-        'lms.djangoapps.instructor_task.tasks_helper.misc.OraAggregateData.collect_ora2_data'
+        'lms.djangoapps.instructor_task.tasks_helper.misc.OraAggregateData.collect_ora2_summary'
     )
     def test_report_stores_results(self, data_collector_module):
         with freeze_time('2001-01-01 00:00:00'):
             test_header = ['field1', 'field2']
             test_rows = [['row1_field1', 'row1_field2'], ['row2_field1', 'row2_field2']]
 
-        with patch(data_collector_module) as mock_current_task:
+        with patch('lms.djangoapps.instructor_task.tasks_helper.runner._get_current_task') as mock_current_task:
             mock_current_task.return_value = self.current_task
 
-            with patch(
-                'lms.djangoapps.instructor_task.tasks_helper.misc.OraAggregateData.collect_ora2_data'
-            ) as mock_collect_data:
+            with patch(data_collector_module) as mock_collect_data:
                 mock_collect_data.return_value = (test_header, test_rows)
                 with patch(
                     'lms.djangoapps.instructor_task.models.DjangoStorageReportStore.store_rows'
