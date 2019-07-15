@@ -2737,12 +2737,14 @@ class TestInstructorOra2Report(SharedModuleStoreTestCase):
         with patch('lms.djangoapps.instructor_task.tasks_helper.runner._get_current_task') as mock_current_task:
             mock_current_task.return_value = self.current_task
 
-            with patch('lms.djangoapps.instructor_task.tasks_helper.misc.OraAggregateData.collect_ora2_data') as mock_collect_data:
+            with patch(
+                'lms.djangoapps.instructor_task.tasks_helper.misc.OraAggregateData.collect_ora2_data'
+            ) as mock_collect_data:
                 mock_collect_data.return_value = (test_header, test_rows)
                 with patch(
                     'lms.djangoapps.instructor_task.models.DjangoStorageReportStore.store_rows'
                 ) as mock_store_rows:
-                    return_val = upload_ora2_summary(None, None, self.course.id, None, 'generated')
+                    return_val = upload_ora2_data(None, None, self.course.id, None, 'generated')
 
                     timestamp_str = datetime.now(UTC).strftime('%Y-%m-%d-%H%M')
                     course_id_string = quote(text_type(self.course.id).replace('/', '_'))
@@ -2759,7 +2761,9 @@ class TestInstructorOra2Report(SharedModuleStoreTestCase):
         with patch('lms.djangoapps.instructor_task.tasks_helper.runner._get_current_task') as mock_current_task:
             mock_current_task.return_value = self.current_task
 
-            with patch('lms.djangoapps.instructor_task.tasks_helper.misc.OraAggregateData.collect_ora2_summary') as mock_collect_summary:
+            with patch(
+                'lms.djangoapps.instructor_task.tasks_helper.misc.OraAggregateData.collect_ora2_summary'
+            ) as mock_collect_summary:
                 mock_collect_summary.return_value = (test_header, test_rows)
                 with patch(
                     'lms.djangoapps.instructor_task.models.DjangoStorageReportStore.store_rows'
