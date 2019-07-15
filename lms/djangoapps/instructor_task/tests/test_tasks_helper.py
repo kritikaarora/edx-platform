@@ -55,7 +55,8 @@ from lms.djangoapps.instructor_task.tasks_helper.grades import (
 from lms.djangoapps.instructor_task.tasks_helper.misc import (
     cohort_students_and_upload,
     upload_course_survey_report,
-    upload_ora2_data
+    upload_ora2_data,
+    upload_ora2_summary
 )
 from lms.djangoapps.instructor_task.tests.test_base import (
     InstructorTaskCourseTestCase,
@@ -2727,11 +2728,7 @@ class TestInstructorOra2Report(SharedModuleStoreTestCase):
                 response = upload_ora2_data(None, None, self.course.id, None, 'generated')
                 self.assertEqual(response, UPDATE_STATUS_FAILED)
 
-    @ddt.data(
-        'lms.djangoapps.instructor_task.tasks_helper.misc.OraAggregateData.collect_ora2_data',
-        'lms.djangoapps.instructor_task.tasks_helper.misc.OraAggregateData.collect_ora2_summary'
-    )
-    def test_report_stores_results(self, data_collector_module):
+    def test_report_stores_results(self):
         with freeze_time('2001-01-01 00:00:00'):
             test_header = ['field1', 'field2']
             test_rows = [['row1_field1', 'row1_field2'], ['row2_field1', 'row2_field2']]
@@ -2739,16 +2736,38 @@ class TestInstructorOra2Report(SharedModuleStoreTestCase):
         with patch('lms.djangoapps.instructor_task.tasks_helper.runner._get_current_task') as mock_current_task:
             mock_current_task.return_value = self.current_task
 
-            with patch(data_collector_module) as mock_collect_data:
+            with patch('lms.djangoapps.instructor_task.tasks_helper.misc.OraAggregateData.collect_ora2_data') as mock_collect_data:
                 mock_collect_data.return_value = (test_header, test_rows)
                 with patch(
                     'lms.djangoapps.instructor_task.models.DjangoStorageReportStore.store_rows'
                 ) as mock_store_rows:
-                    return_val = upload_ora2_data(None, None, self.course.id, None, 'generated')
+                    return_val = upload_ora2_summary(None, None, self.course.id, None, 'generated')
 
                     timestamp_str = datetime.now(UTC).strftime('%Y-%m-%d-%H%M')
                     course_id_string = quote(text_type(self.course.id).replace('/', '_'))
                     filename = u'{}_ORA_data_{}.csv'.format(course_id_string, timestamp_str)
+
+                    self.assertEqual(return_val, UPDATE_STATUS_SUCCEEDED)
+                    mock_store_rows.assert_called_once_with(self.course.id, filename, [test_header] + test_rows)
+
+    def test_summary_report_stores_results(self):
+        with freeze_time('2001-01-01 00:00:00'):
+            test_header = ['field1', 'field2']
+            test_rows = [['row1_field1', 'row1_field2'], ['row2_field1', 'row2_field2']]
+
+        with patch('lms.djangoapps.instructor_task.tasks_helper.runner._get_current_task') as mock_current_task:
+            mock_current_task.return_value = self.current_task
+
+            with patch('lms.djangoapps.instructor_task.tasks_helper.misc.OraAggregateData.collect_ora2_summary') as mock_collect_summary:
+                mock_collect_summary.return_value = (test_header, test_rows)
+                with patch(
+                    'lms.djangoapps.instructor_task.models.DjangoStorageReportStore.store_rows'
+                ) as mock_store_rows:
+                    return_val = upload_ora2_summary(None, None, self.course.id, None, 'generated')
+
+                    timestamp_str = datetime.now(UTC).strftime('%Y-%m-%d-%H%M')
+                    course_id_string = quote(text_type(self.course.id).replace('/', '_'))
+                    filename = u'{}_ORA_summary_{}.csv'.format(course_id_string, timestamp_str)
 
                     self.assertEqual(return_val, UPDATE_STATUS_SUCCEEDED)
                     mock_store_rows.assert_called_once_with(self.course.id, filename, [test_header] + test_rows)
