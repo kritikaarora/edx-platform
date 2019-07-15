@@ -251,7 +251,7 @@ def upload_ora2_data(
 
     return _upload_ora2_data_common(
         _xmodule_instance_args, _entry_id, course_id, _task_input, action_name,
-        u'data', lambda: OraAggregateData.collect_ora2_data(course_id)
+        u'data', OraAggregateData.collect_ora2_data
     )
 
 
@@ -264,7 +264,7 @@ def upload_ora2_summary(
 
     return _upload_ora2_data_common(
         _xmodule_instance_args, _entry_id, course_id, _task_input, action_name,
-        u'summary', lambda: OraAggregateData.collect_ora2_summary(course_id)
+        u'summary', OraAggregateData.collect_ora2_summary
     )
 
 
@@ -304,7 +304,7 @@ def _upload_ora2_data_common(
     task_progress.update_task_state(extra_meta=curr_step)
 
     try:
-        header, datarows = csv_gen_func()
+        header, datarows = csv_gen_func(course_id)
         rows = [header] + [row for row in datarows]
     # Update progress to failed regardless of error type
     except Exception:  # pylint: disable=broad-except
