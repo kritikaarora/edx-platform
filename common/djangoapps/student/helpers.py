@@ -268,15 +268,19 @@ def get_next_url_for_login_page(request):
     /account/finish_auth/ view following login, which will take care of auto-enrollment in
     the specified course.
 
-    Otherwise, we go to the ?next= query param or to the dashboard if nothing else is
-    specified.
+    Otherwise, we go to the ?next= query param or the configured custom
+    redirection url (the default behaviour is to go to /dashboard).
 
     If THIRD_PARTY_AUTH_HINT is set, then `tpa_hint=<hint>` is added as a query parameter.
     """
     redirect_to = _get_redirect_to(request)
     if not redirect_to:
         try:
-            redirect_to = reverse('dashboard')
+            login_redirect_url = configuration_helpers.get_value(
+                'DEFAULT_REDIRECT_AFTER_LOGIN',
+                default='dashboard'
+            )
+            redirect_to = reverse(login_redirect_url)
         except NoReverseMatch:
             redirect_to = reverse('home')
 
