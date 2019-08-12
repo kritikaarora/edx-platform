@@ -282,7 +282,7 @@ def get_next_url_for_login_page(request):
             )
             redirect_to = reverse(login_redirect_url)
         except NoReverseMatch:
-            redirect_to = reverse('home')
+            redirect_to = reverse('dashboard')
 
     if any(param in request.GET for param in POST_AUTH_PARAMS):
         # Before we redirect to next/dashboard, we need to handle auto-enrollment:
