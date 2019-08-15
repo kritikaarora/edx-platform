@@ -92,7 +92,7 @@ class TestLoginHelper(TestCase):
         """
         configuration_values = {"DEFAULT_REDIRECT_AFTER_LOGIN": redirect}
         req = self.request.get(reverse("login"))
-        req.META["HTTP_ACCEPT"] = "text/html"  # pylint: disable=no-member
+        req.META["HTTP_ACCEPT"] = "text/html"
 
         with with_site_configuration_context(configuration=configuration_values):
             next_page = get_next_url_for_login_page(req)
