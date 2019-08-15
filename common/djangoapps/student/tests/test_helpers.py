@@ -80,6 +80,25 @@ class TestLoginHelper(TestCase):
         next_page = get_next_url_for_login_page(req)
         self.assertEqual(next_page, next_url)
 
+    @ddt.data(
+        (None, '/dashboard'),
+        ('invalid-url', '/dashboard'),
+        ('courses', '/courses'),
+    )
+    @ddt.unpack
+    def test_custom_redirect_url(self, redirect, expected_url):
+        """
+        Test custom redirect after login
+        """
+        configuration_values = {"DEFAULT_REDIRECT_AFTER_LOGIN": redirect}
+        req = self.request.get(reverse("login"))
+        req.META["HTTP_ACCEPT"] = "text/html"  # pylint: disable=no-member
+
+        with with_site_configuration_context(configuration=configuration_values):
+            next_page = get_next_url_for_login_page(req)
+
+        self.assertEqual(next_page, expected_url)
+
     @patch('student.helpers.third_party_auth.pipeline.get')
     @ddt.data(
         # Test requests outside the TPA pipeline - tpa_hint should be added.

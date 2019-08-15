@@ -277,17 +277,20 @@ def get_next_url_for_login_page(request):
     if not redirect_to:
         try:
             login_redirect_url = configuration_helpers.get_value('DEFAULT_REDIRECT_AFTER_LOGIN')
-            import pdb; pdb.set_trace()
-            try:
-                redirect_to = reverse(login_redirect_url)
-            except NoReverseMatch:
-                log.warning(
-                    u'Default redirect after login doesn\'t exist: %(login_redirect_url)r. '
-                    u'Check the value set on DEFAULT_REDIRECT_AFTER_LOGIN configuration variable.',
-                    {"login_redirect_url": login_redirect_url}
-                )
+            if login_redirect_url:
+                try:
+                    redirect_to = reverse(login_redirect_url)
+                except NoReverseMatch:
+                    log.warning(
+                        u'Default redirect after login doesn\'t exist: %(login_redirect_url)r. '
+                        u'Check the value set on DEFAULT_REDIRECT_AFTER_LOGIN configuration variable.',
+                        {"login_redirect_url": login_redirect_url}
+                    )
+            # If redirect url isn't set, reverse to dashboard
+            if not redirect_to:
                 # Tries reversing the LMS dashboard if the url doesn't exist
                 redirect_to = reverse('dashboard')
+
         except NoReverseMatch:
             # Redirect to the learner dashboard (in LMS) or homepage (in Studio)
             redirect_to = reverse('home')
