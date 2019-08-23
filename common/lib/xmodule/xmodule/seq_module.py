@@ -477,6 +477,7 @@ class SequenceModule(SequenceFields, ProctoringFields, XModule):
         for item in display_items:
             # NOTE (CCB): This seems like a hack, but I don't see a better method of determining the type/category.
             item_type = item.get_icon_class()
+            item_icon = item.get_icon()
             usage_id = item.scope_ids.usage_id
 
             if item_type == 'problem' and not is_user_authenticated:
@@ -506,7 +507,8 @@ class SequenceModule(SequenceFields, ProctoringFields, XModule):
                 'id': text_type(usage_id),
                 'bookmarked': is_bookmarked,
                 'path': " > ".join(display_names + [item.display_name_with_default]),
-                'graded': item.graded
+                'graded': item.graded,
+                'icon': item_icon,
             }
 
             if is_user_authenticated:
