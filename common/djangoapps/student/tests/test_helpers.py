@@ -3,6 +3,7 @@
 from __future__ import absolute_import
 
 import logging
+import unittest
 
 import ddt
 from django.conf import settings
@@ -80,6 +81,7 @@ class TestLoginHelper(TestCase):
         next_page = get_next_url_for_login_page(req)
         self.assertEqual(next_page, next_url)
 
+    @unittest.skipUnless(settings.ROOT_URLCONF == 'lms.urls', 'Test only valid in lms')
     @ddt.data(
         (None, '/dashboard'),
         ('invalid-url', '/dashboard'),
