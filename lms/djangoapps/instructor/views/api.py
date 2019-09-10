@@ -386,6 +386,7 @@ def register_and_enroll_students(request, course_id):  # pylint: disable=too-man
         generated_passwords = []
         row_num = 0
         cohorts = {}  # {'name': CourseUserGroup}
+        already_warned_not_cohorted = False
         for student in students:
             row_num = row_num + 1
 
@@ -413,32 +414,30 @@ def register_and_enroll_students(request, course_id):  # pylint: disable=too-man
             if len(student) > COHORT_INDEX and student[COHORT_INDEX]:
                 # get a cohort name if exists, with caching in `cohorts`
                 cohort_name = student[COHORT_INDEX]
-                if cohort_name and not is_course_cohorted(course_id):
+                if not is_course_cohorted(course_id) and not already_warned_not_cohorted:
                     row_errors.append({
                         'username': username,
                         'email': email,
-                        'response': _(u'Course is not cohorted but cohort provided. Ignoring cohort assignment.')
+                        'response': _(u'Course is not cohorted but cohort provided. Ignoring cohort assignment for all users.')
                     })
                     cohort = None
-                elif cohort_name and cohort_name in cohorts:
+                    already_warned_not_cohorted = True
+                elif cohort_name in cohorts:
                     cohort = cohorts[cohort_name]
-                elif cohort_name:
-                    # if cohort doesn't exist, don't attempt to create cohort or assign student to cohort
+                else:
                     cohort = CourseUserGroup.objects.filter(
                         course_id=course_id,
                         group_type=CourseUserGroup.COHORT,
                         name=cohort_name
                     ).first()
+                    # if cohort doesn't exist, don't attempt to create cohort or assign student to cohort
                     if cohort is None:
                         row_errors.append({
                             'username': username,
                             'email': email,
                             'response': _(u'Cohort name not found: {cohort}. Ignoring cohort assignment.'.format(cohort=cohort_name))
                         })
-
                     cohorts[cohort_name] = cohort
-                else:
-                    cohort = None
 
             if len(student) > MODE_INDEX and student[MODE_INDEX]:
                 course_mode = student[MODE_INDEX] if student[MODE_INDEX] else default_course_mode
