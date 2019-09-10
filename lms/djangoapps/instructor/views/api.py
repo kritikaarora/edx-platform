@@ -344,6 +344,8 @@ def register_and_enroll_students(request, course_id):  # pylint: disable=too-man
     row_errors = []
     general_errors = []
 
+    notify_by_email = _get_boolean_param(request, 'email_students')
+
     # for white labels we use 'shopping cart' which uses CourseMode.DEFAULT_SHOPPINGCART_MODE_SLUG as
     # course mode for creating course enrollments.
     if CourseMode.is_white_label(course_id):
@@ -495,7 +497,7 @@ def register_and_enroll_students(request, course_id):  # pylint: disable=too-man
                         enroll_email(course_id=course_id,
                                      student_email=email,
                                      auto_enroll=True,
-                                     email_students=True,
+                                     email_students=notify_by_email,
                                      email_params=email_params)
                     if cohort:
                         try:
@@ -519,7 +521,7 @@ def register_and_enroll_students(request, course_id):  # pylint: disable=too-man
                     # will raise an IntegrityError exception.
                     password = generate_unique_password(generated_passwords)
                     errors = create_and_enroll_user(
-                        email, username, name, country, password, course_id, course_mode, request.user, email_params
+                        email, username, name, country, password, course_id, course_mode, request.user, email_params, email_user=notify_by_email,
                     )
                     row_errors.extend(errors)
                     if cohort:
@@ -622,7 +624,7 @@ def create_manual_course_enrollment(user, course_id, mode, enrolled_by, reason, 
     return enrollment_obj
 
 
-def create_and_enroll_user(email, username, name, country, password, course_id, course_mode, enrolled_by, email_params):
+def create_and_enroll_user(email, username, name, country, password, course_id, course_mode, enrolled_by, email_params, email_user=True):
     """
     Create a new user and enroll him/her to the given course, return list of errors in the following format
         Error format:
@@ -670,29 +672,30 @@ def create_and_enroll_user(email, username, name, country, password, course_id, 
             'username': username, 'email': email, 'response': type(ex).__name__,
         })
     else:
-        try:
-            # It's a new user, an email will be sent to each newly created user.
-            email_params.update({
-                'message_type': 'account_creation_and_enrollment',
-                'email_address': email,
-                'password': password,
-                'platform_name': configuration_helpers.get_value('platform_name', settings.PLATFORM_NAME),
-            })
-            send_mail_to_student(email, email_params)
-        except Exception as ex:  # pylint: disable=broad-except
-            log.exception(
-                u"Exception '{exception}' raised while sending email to new user.".format(exception=type(ex).__name__)
-            )
-            errors.append({
-                'username': username,
-                'email': email,
-                'response':
-                    _(u"Error '{error}' while sending email to new user (user email={email}). "
-                      u"Without the email student would not be able to login. "
-                      u"Please contact support for further information.").format(error=type(ex).__name__, email=email),
-            })
-        else:
-            log.info(u'email sent to new created user at %s', email)
+        if email_user:
+            try:
+                # It's a new user, an email will be sent to each newly created user.
+                email_params.update({
+                    'message_type': 'account_creation_and_enrollment',
+                    'email_address': email,
+                    'password': password,
+                    'platform_name': configuration_helpers.get_value('platform_name', settings.PLATFORM_NAME),
+                })
+                send_mail_to_student(email, email_params)
+            except Exception as ex:  # pylint: disable=broad-except
+                log.exception(
+                    u"Exception '{exception}' raised while sending email to new user.".format(exception=type(ex).__name__)
+                )
+                errors.append({
+                    'username': username,
+                    'email': email,
+                    'response':
+                        _(u"Error '{error}' while sending email to new user (user email={email}). "
+                          u"Without the email student would not be able to login. "
+                          u"Please contact support for further information.").format(error=type(ex).__name__, email=email),
+                })
+            else:
+                log.info(u'email sent to new created user at %s', email)
 
     return errors
 
