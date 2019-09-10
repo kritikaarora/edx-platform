@@ -410,7 +410,7 @@ def register_and_enroll_students(request, course_id):  # pylint: disable=too-man
 
             cohort = None  # Optional[CourseUserGroup]
             course_mode = default_course_mode
-            if len(student) > COHORT_INDEX:
+            if len(student) > COHORT_INDEX and student[COHORT_INDEX]:
                 # get a cohort name if exists, with caching in `cohorts`
                 cohort_name = student[COHORT_INDEX]
                 if cohort_name and not is_course_cohorted(course_id):
@@ -440,7 +440,7 @@ def register_and_enroll_students(request, course_id):  # pylint: disable=too-man
                 else:
                     cohort = None
 
-            if len(student) > MODE_INDEX:
+            if len(student) > MODE_INDEX and student[MODE_INDEX]:
                 course_mode = student[MODE_INDEX] if student[MODE_INDEX] else default_course_mode
                 if course_mode not in valid_course_modes:
                     row_errors.append({
