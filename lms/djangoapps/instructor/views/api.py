@@ -345,8 +345,8 @@ def register_and_enroll_students(request, course_id):  # pylint: disable=too-man
     general_errors = []
 
     notify_by_email = _get_boolean_param(request, 'email-students')
-    log.warn("email_students %s", _get_boolean_param(request, 'email_students'))
-    log.warn("email-students %s", _get_boolean_param(request, 'email-students'))
+    for key, value in request.POST.items():
+        log.warn("request post param: %s | %s", key, value)
 
     # for white labels we use 'shopping cart' which uses CourseMode.DEFAULT_SHOPPINGCART_MODE_SLUG as
     # course mode for creating course enrollments.
