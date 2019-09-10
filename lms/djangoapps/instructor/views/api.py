@@ -344,9 +344,8 @@ def register_and_enroll_students(request, course_id):  # pylint: disable=too-man
     row_errors = []
     general_errors = []
 
-    notify_by_email = _get_boolean_param(request, 'email-students')
-    for key, value in request.POST.items():
-        log.warn("request post param: %s | %s", key, value)
+    # email-students is a checkbox input type; will be present in POST if checked, absent otherwise
+    notify_by_email = 'email-students' in request.POST
 
     # for white labels we use 'shopping cart' which uses CourseMode.DEFAULT_SHOPPINGCART_MODE_SLUG as
     # course mode for creating course enrollments.
