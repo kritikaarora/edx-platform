@@ -233,13 +233,6 @@ class InheritanceMixin(XBlockMixin):
         scope=Scope.settings
     )
 
-    icon = String(
-        display_name=_("Icon"),
-        default='default',
-        help=_("XBlock Icon"),
-        scope=Scope.settings,
-    )
-
 
 def compute_inherited_metadata(descriptor):
     """Given a descriptor, traverse all of its descendants and do metadata
