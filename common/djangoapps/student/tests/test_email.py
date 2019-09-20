@@ -215,7 +215,7 @@ class ReactivationEmailTests(EmailTestMixin, CacheIsolationTestCase):
         Send the reactivation email to the specified user,
         and return the response as json data.
         """
-        return json.loads(send_reactivation_email_for_user(user).content)
+        return json.loads(send_reactivation_email_for_user(user).content.decode('utf-8'))
 
     def assertReactivateEmailSent(self, email_user):
         """
@@ -380,8 +380,6 @@ class EmailChangeRequestTests(EventTestMixin, EmailTemplateTagMixin, CacheIsolat
                 ),
                 u'If this is correct, please confirm your new e-mail address by visiting:',
                 u'http://edx.org/email_confirm/{key}'.format(key=registration_key),
-                u'If you didn\'t request this, you don\'t need to do anything;',
-                u'you won\'t receive any more email from us.',
                 u'Please do not reply to this e-mail; if you require assistance,',
                 u'check the help section of the édX web site.',
             ],
@@ -403,7 +401,6 @@ class EmailChangeRequestTests(EventTestMixin, EmailTemplateTagMixin, CacheIsolat
         html = message.alternatives[0][0]
 
         assert message.subject == subject
-
         for body in text, html:
             for fragment in body_fragments:
                 assert fragment in body
@@ -483,7 +480,7 @@ class EmailChangeConfirmationTests(EmailTestMixin, EmailTemplateTagMixin, CacheI
         self.assertEqual(response.status_code, 200)
         self.assertEquals(
             mock_render_to_response(expected_template, expected_context).content,
-            response.content
+            response.content.decode('utf-8')
         )
 
     def assertChangeEmailSent(self, test_body_type):

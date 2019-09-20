@@ -18,7 +18,7 @@ import logging
 import os
 from collections import OrderedDict
 from random import choice
-from string import digits, letters, punctuation
+from string import digits, ascii_letters, punctuation
 from uuid import uuid4
 
 import openid.oidutil
@@ -90,8 +90,6 @@ FEATURES['MILESTONES_APP'] = True
 FEATURES['ENABLE_ENROLLMENT_TRACK_USER_PARTITION'] = True
 
 FEATURES['ENABLE_BULK_ENROLLMENT_VIEW'] = True
-
-FEATURES['ENABLE_API_DOCS'] = True
 
 DEFAULT_MOBILE_AVAILABLE = True
 
@@ -233,7 +231,20 @@ CACHES = {
     'course_structure_cache': {
         'BACKEND': 'django.core.cache.backends.dummy.DummyCache',
     },
+    # Blockstore caching tests require a cache that actually works:
+    'blockstore': {
+        'KEY_PREFIX': 'blockstore',
+        'KEY_FUNCTION': 'util.memcache.safe_key',
+        'LOCATION': 'edx_loc_mem_cache',
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+    },
 }
+
+############################### BLOCKSTORE #####################################
+# Blockstore tests
+RUN_BLOCKSTORE_TESTS = os.environ.get('EDXAPP_RUN_BLOCKSTORE_TESTS', 'no').lower() in ('true', 'yes', '1')
+BLOCKSTORE_API_URL = os.environ.get('EDXAPP_BLOCKSTORE_API_URL', "http://edx.devstack.blockstore-test:18251/api/v1/")
+BLOCKSTORE_API_AUTH_TOKEN = os.environ.get('EDXAPP_BLOCKSTORE_API_AUTH_TOKEN', 'edxapp-test-key')
 
 # Dummy secret key for dev
 SECRET_KEY = '85920908f28904ed733fe576320db18cabd7b6cd'
@@ -292,7 +303,7 @@ FEATURES['ENABLE_PAYMENT_FAKE'] = True
 # the same settings, we can generate this randomly and guarantee
 # that they are using the same secret.
 RANDOM_SHARED_SECRET = ''.join(
-    choice(letters + digits + punctuation)
+    choice(ascii_letters + digits + punctuation)
     for x in range(250)
 )
 
@@ -337,7 +348,7 @@ MKTG_URL_LINK_MAP = {
     'WHAT_IS_VERIFIED_CERT': 'verified-certificate',
 }
 
-SUPPORT_SITE_LINK = 'https://support.example.com'
+SUPPORT_SITE_LINK = 'https://example.support.edx.org'
 PASSWORD_RESET_SUPPORT_LINK = 'https://support.example.com/password-reset-help.html'
 ACTIVATION_EMAIL_SUPPORT_LINK = 'https://support.example.com/activation-email-help.html'
 ENTERPRISE_MARKETING_FOOTER_QUERY_PARAMS = OrderedDict([
@@ -416,77 +427,6 @@ PLATFORM_NAME = ugettext_lazy(u"édX")
 PLATFORM_DESCRIPTION = ugettext_lazy(u"Open édX Platform")
 
 SITE_NAME = "edx.org"
-
-# set up some testing for microsites
-FEATURES['USE_MICROSITES'] = True
-MICROSITE_ROOT_DIR = COMMON_ROOT / 'test' / 'test_sites'
-MICROSITE_CONFIGURATION = {
-    "test_site": {
-        "domain_prefix": "test-site",
-        "university": "test_site",
-        "platform_name": "Test Site",
-        "logo_image_url": "test_site/images/header-logo.png",
-        "email_from_address": "test_site@edx.org",
-        "ACTIVATION_EMAIL_FROM_ADDRESS": "test_activate@edx.org",
-        "payment_support_email": "test_site@edx.org",
-        "ENABLE_MKTG_SITE": False,
-        "SITE_NAME": "test_site.localhost",
-        "course_org_filter": "TestSiteX",
-        "course_about_show_social_links": False,
-        "css_overrides_file": "test_site/css/test_site.css",
-        "show_partners": False,
-        "show_homepage_promo_video": False,
-        "course_index_overlay_text": "This is a Test Site Overlay Text.",
-        "course_index_overlay_logo_file": "test_site/images/header-logo.png",
-        "homepage_overlay_html": "<h1>This is a Test Site Overlay HTML</h1>",
-        "ALWAYS_REDIRECT_HOMEPAGE_TO_DASHBOARD_FOR_AUTHENTICATED_USER": False,
-        "COURSE_CATALOG_VISIBILITY_PERMISSION": "see_in_catalog",
-        "COURSE_ABOUT_VISIBILITY_PERMISSION": "see_about_page",
-        "ENABLE_SHOPPING_CART": True,
-        "ENABLE_PAID_COURSE_REGISTRATION": True,
-        "SESSION_COOKIE_DOMAIN": "test_site.localhost",
-        "LINKEDIN_COMPANY_ID": "test",
-        "FACEBOOK_APP_ID": "12345678908",
-        "urls": {
-            'ABOUT': 'test-site/about',
-            'PRIVACY': 'test-site/privacy',
-            'TOS_AND_HONOR': 'test-site/tos-and-honor',
-        },
-    },
-    "site_with_logistration": {
-        "domain_prefix": "logistration",
-        "university": "logistration",
-        "platform_name": "Test logistration",
-        "logo_image_url": "test_site/images/header-logo.png",
-        "email_from_address": "test_site@edx.org",
-        "ACTIVATION_EMAIL_FROM_ADDRESS": "test_activate@edx.org",
-        "payment_support_email": "test_site@edx.org",
-        "ENABLE_MKTG_SITE": False,
-        "ENABLE_COMBINED_LOGIN_REGISTRATION": True,
-        "SITE_NAME": "test_site.localhost",
-        "course_org_filter": "LogistrationX",
-        "course_about_show_social_links": False,
-        "css_overrides_file": "test_site/css/test_site.css",
-        "show_partners": False,
-        "show_homepage_promo_video": False,
-        "course_index_overlay_text": "Logistration.",
-        "course_index_overlay_logo_file": "test_site/images/header-logo.png",
-        "homepage_overlay_html": "<h1>This is a Logistration HTML</h1>",
-        "ALWAYS_REDIRECT_HOMEPAGE_TO_DASHBOARD_FOR_AUTHENTICATED_USER": False,
-        "COURSE_CATALOG_VISIBILITY_PERMISSION": "see_in_catalog",
-        "COURSE_ABOUT_VISIBILITY_PERMISSION": "see_about_page",
-        "ENABLE_SHOPPING_CART": True,
-        "ENABLE_PAID_COURSE_REGISTRATION": True,
-        "SESSION_COOKIE_DOMAIN": "test_logistration.localhost",
-    },
-    "default": {
-        "university": "default_university",
-        "domain_prefix": "www",
-    }
-}
-
-MICROSITE_TEST_HOSTNAME = 'test-site.testserver'
-MICROSITE_LOGISTRATION_HOSTNAME = 'logistration.testserver'
 
 TEST_THEME = COMMON_ROOT / "test" / "test-theme"
 
@@ -673,3 +613,5 @@ COURSE_ENROLLMENT_MODES['test_mode'] = {
     "display_name": u"Test Mode",
     "min_price": 0
 }
+
+PROCTORING_SETTINGS = {}

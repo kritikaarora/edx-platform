@@ -42,6 +42,7 @@ from enterprise.constants import (
     ENTERPRISE_CATALOG_ADMIN_ROLE,
     ENTERPRISE_DASHBOARD_ADMIN_ROLE,
     ENTERPRISE_ENROLLMENT_API_ADMIN_ROLE,
+    ENTERPRISE_REPORTING_CONFIG_ADMIN_ROLE,
     ENTERPRISE_OPERATOR_ROLE
 )
 
@@ -97,7 +98,7 @@ FEATURES = {
     'ENABLE_TEXTBOOK': True,
 
     # .. toggle_name: ENABLE_STUDENT_NOTES
-    # .. toggle_type: feature_flag
+    # .. toggle_type: waffle_flag
     # .. toggle_default: True
     # .. toggle_description: Enables the Student Notes API and UI.
     # .. toggle_category: ????
@@ -127,7 +128,7 @@ FEATURES = {
     'ENABLE_MASQUERADE': True,  # allow course staff to change to student view of courseware
 
     # .. toggle_name: ENABLE_SYSADMIN_DASHBOARD
-    # .. toggle_type: feature_flag
+    # .. toggle_type: waffle_flag
     # .. toggle_default: False
     # .. toggle_description: enables dashboard at /syadmin/ for django staff, for seeing overview of system status, for deleting and loading courses, for seeing log of git imports of courseware.
     # .. toggle_category: admin
@@ -157,18 +158,9 @@ FEATURES = {
     # Set to hide the courses list on the Learner Dashboard if they are not enrolled in any courses yet.
     'HIDE_DASHBOARD_COURSES_UNTIL_ACTIVATED': False,
 
-    # enable analytics server.
-    # WARNING: THIS SHOULD ALWAYS BE SET TO FALSE UNDER NORMAL
-    # LMS OPERATION. See analytics.py for details about what
-    # this does.
-    'RUN_AS_ANALYTICS_SERVER_ENABLED': False,
-
     # Give a UI to show a student's submission history in a problem by the
     # Staff Debug tool.
     'ENABLE_STUDENT_HISTORY_VIEW': True,
-
-    # Provide a UI to allow users to submit feedback from the LMS (left-hand help modal)
-    'ENABLE_FEEDBACK_SUBMISSION': False,
 
     # Turn on a page that lets staff enter Python code to be run in the
     # sandbox, for testing whether it's enabled properly.
@@ -201,7 +193,7 @@ FEATURES = {
     'ENABLE_VERIFIED_CERTIFICATES': False,
 
     # .. toggle_name: DISABLE_HONOR_CERTIFICATES
-    # .. toggle_type: feature_flag
+    # .. toggle_type: waffle_flag
     # .. toggle_default: False
     # .. toggle_description: Set to True to disable honor certificates. Typically used when your installation only allows verified certificates, like courses.edx.org.
     # .. toggle_category: certificates
@@ -210,6 +202,7 @@ FEATURES = {
     # .. toggle_expiration_date: None
     # .. toggle_tickets: https://openedx.atlassian.net/browse/PROD-269
     # .. toggle_status: supported
+    # .. toggle_warnings: ???
     'DISABLE_HONOR_CERTIFICATES': False,  # Toggle to disable honor certificates
 
     # for acceptance and load testing
@@ -258,9 +251,6 @@ FEATURES = {
     # defaults, so that we maintain current behavior
     'ALLOW_WIKI_ROOT_ACCESS': True,
 
-    # Turn on/off Microsites feature
-    'USE_MICROSITES': False,
-
     # Turn on third-party auth. Disabled for now because full implementations are not yet available. Remember to run
     # migrations if you enable this; we don't create tables by default.
     'ENABLE_THIRD_PARTY_AUTH': False,
@@ -297,6 +287,9 @@ FEATURES = {
 
     # Let students save and manage their annotations
     'ENABLE_EDXNOTES': False,
+
+    # Toggle to enable coordination with the Publisher tool (keep in sync with cms/envs/common.py)
+    'ENABLE_PUBLISHER': False,
 
     # Milestones application flag
     'MILESTONES_APP': False,
@@ -418,11 +411,11 @@ FEATURES = {
     # Sets the default browser support. For more information go to http://browser-update.org/customize.html
     'UNSUPPORTED_BROWSER_ALERT_VERSIONS': "{i:10,f:-3,o:-3,s:-3,c:-3}",
 
-    # Set this to true to make API docs available at /api-docs/.
-    'ENABLE_API_DOCS': False,
-
     # Whether to display the account deletion section the account settings page
     'ENABLE_ACCOUNT_DELETION': True,
+
+    # Enable feature to remove enrollments and users. Used to reset state of master's integration environments
+    'ENABLE_ENROLLMENT_RESET': False,
 }
 
 # Settings for the course reviews tool template and identification key, set either to None to disable course reviews
@@ -503,6 +496,13 @@ DATABASE_ROUTERS = [
 ############################ Cache Configuration ###############################
 
 CACHES = {
+    'blockstore': {
+        'KEY_PREFIX': 'blockstore',
+        'KEY_FUNCTION': 'util.memcache.safe_key',
+        'LOCATION': ['localhost:11211'],
+        'TIMEOUT': '86400',  # This data should be long-lived for performance, BundleCache handles invalidation
+        'BACKEND': 'django.core.cache.backends.memcached.MemcachedCache',
+    },
     'course_structure_cache': {
         'KEY_PREFIX': 'course_structure',
         'KEY_FUNCTION': 'util.memcache.safe_key',
@@ -646,8 +646,6 @@ def _make_mako_template_dirs(settings):
         for theme in get_themes_unchecked(themes_dirs, settings.PROJECT_ROOT):
             if theme.themes_base_dir not in settings.MAKO_TEMPLATE_DIRS_BASE:
                 settings.MAKO_TEMPLATE_DIRS_BASE.insert(0, theme.themes_base_dir)
-    if settings.FEATURES.get('USE_MICROSITES', False) and getattr(settings, "MICROSITE_CONFIGURATION", False):
-        settings.MAKO_TEMPLATE_DIRS_BASE.insert(0, settings.MICROSITE_ROOT_DIR)
     return settings.MAKO_TEMPLATE_DIRS_BASE
 
 
@@ -672,9 +670,6 @@ CONTEXT_PROCESSORS = [
 
     # Timezone processor (sends language and time_zone preference)
     'courseware.context_processor.user_timezone_locale_prefs',
-
-    # Allows the open edX footer to be leveraged in Django Templates.
-    'edxmako.shortcuts.footer_context_processor',
 
     # Online contextual help
     'help_tokens.context_processor',
@@ -732,24 +727,12 @@ derived_collection_entry('TEMPLATES', 1, 'DIRS')
 DEFAULT_TEMPLATE_ENGINE = TEMPLATES[0]
 DEFAULT_TEMPLATE_ENGINE_DIRS = DEFAULT_TEMPLATE_ENGINE['DIRS'][:]
 
-
-def _add_microsite_dirs_to_default_template_engine(settings):
-    """
-    Derives the final DEFAULT_TEMPLATE_ENGINE['DIRS'] setting from other settings.
-    """
-    if settings.FEATURES.get('USE_MICROSITES', False) and getattr(settings, "MICROSITE_CONFIGURATION", False):
-        DEFAULT_TEMPLATE_ENGINE_DIRS.append(settings.MICROSITE_ROOT_DIR)
-    return DEFAULT_TEMPLATE_ENGINE_DIRS
-
-
-DEFAULT_TEMPLATE_ENGINE['DIRS'] = _add_microsite_dirs_to_default_template_engine
-derived_collection_entry('DEFAULT_TEMPLATE_ENGINE', 'DIRS')
-
 ###############################################################################################
 
 AUTHENTICATION_BACKENDS = [
     'rules.permissions.ObjectPermissionBackend',
-    'openedx.core.djangoapps.oauth_dispatch.dot_overrides.backends.EdxRateLimitedAllowAllUsersModelBackend'
+    'openedx.core.djangoapps.oauth_dispatch.dot_overrides.backends.EdxRateLimitedAllowAllUsersModelBackend',
+    'bridgekeeper.backends.RulePermissionBackend',
 ]
 
 STUDENT_FILEUPLOAD_MAX_SIZE = 4 * 1000 * 1000  # 4 MB
@@ -1283,7 +1266,10 @@ LANGUAGES = [
 LANGUAGE_DICT = dict(LANGUAGES)
 
 # Languages supported for custom course certificate templates
-CERTIFICATE_TEMPLATE_LANGUAGES = {}
+CERTIFICATE_TEMPLATE_LANGUAGES = {
+    'en': 'English',
+    'es': 'Español',
+}
 
 USE_I18N = True
 USE_L10N = True
@@ -1340,15 +1326,16 @@ WIKI_USE_BOOTSTRAP_SELECT_WIDGET = False
 WIKI_LINK_LIVE_LOOKUPS = False
 WIKI_LINK_DEFAULT_LEVEL = 2
 
-##### Feedback submission mechanism #####
-FEEDBACK_SUBMISSION_EMAIL = None
-
 ##### Zendesk #####
 ZENDESK_URL = ''
 ZENDESK_USER = ''
 ZENDESK_API_KEY = ''
 ZENDESK_CUSTOM_FIELDS = {}
 ZENDESK_OAUTH_ACCESS_TOKEN = ''
+# A mapping of string names to Zendesk Group IDs
+# To get the IDs of your groups you can go to
+# {zendesk_url}/api/v2/groups.json
+ZENDESK_GROUP_ID_MAPPING = {}
 
 ##### EMBARGO #####
 EMBARGO_SITE_REDIRECT_URL = None
@@ -1449,7 +1436,6 @@ MIDDLEWARE_CLASSES = [
 
     'mobile_api.middleware.AppVersionUpgrade',
     'openedx.core.djangoapps.header_control.middleware.HeaderControlMiddleware',
-    'microsite_configuration.middleware.MicrositeMiddleware',
     'lms.djangoapps.discussion.django_comment_client.middleware.AjaxExceptionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.contrib.sites.middleware.CurrentSiteMiddleware',
@@ -2301,6 +2287,9 @@ INSTALLED_APPS = [
     'bulk_email',
     'branding',
 
+    # New (Blockstore-based) XBlock runtime
+    'openedx.core.djangoapps.xblock.apps.LmsXBlockAppConfig',
+
     # Student support tools
     'support',
 
@@ -2380,9 +2369,6 @@ INSTALLED_APPS = [
 
     # Dark-launching languages
     'openedx.core.djangoapps.dark_lang',
-
-    # Microsite configuration
-    'microsite_configuration.apps.MicrositeConfigurationConfig',
 
     # RSS Proxy
     'rss_proxy',
@@ -2477,6 +2463,7 @@ INSTALLED_APPS = [
 
     # rule-based authorization
     'rules.apps.AutodiscoverRulesConfig',
+    'bridgekeeper',
 
     # Customized celery tasks, including persisting failed tasks so they can
     # be retried
@@ -2547,13 +2534,32 @@ SWAGGER_SETTINGS = {
     'DEFAULT_INFO': 'openedx.core.openapi.openapi_info',
 }
 
+# How long to cache OpenAPI schemas and UI, in seconds.
+OPENAPI_CACHE_TIMEOUT = 0
+
 ######################### MARKETING SITE ###############################
 EDXMKTG_LOGGED_IN_COOKIE_NAME = 'edxloggedin'
 EDXMKTG_USER_INFO_COOKIE_NAME = 'edx-user-info'
 EDXMKTG_USER_INFO_COOKIE_VERSION = 1
 
 MKTG_URLS = {}
-MKTG_URL_LINK_MAP = {}
+MKTG_URL_LINK_MAP = {
+    'ABOUT': 'about',
+    'CONTACT': 'contact',
+    'FAQ': 'help',
+    'COURSES': 'courses',
+    'ROOT': 'root',
+    'TOS': 'tos',
+    'HONOR': 'honor',  # If your site does not have an honor code, simply delete this line.
+    'PRIVACY': 'privacy',
+    'PRESS': 'press',
+    'BLOG': 'blog',
+    'DONATE': 'donate',
+    'SITEMAP.XML': 'sitemap_xml',
+
+    # Verified Certificates
+    'WHAT_IS_VERIFIED_CERT': 'verified-certificate',
+}
 
 STATIC_TEMPLATE_VIEW_DEFAULT_FILE_EXTENSION = 'html'
 
@@ -3282,9 +3288,6 @@ COURSE_CATALOG_API_URL = 'http://localhost:8008/api/v1'
 CREDENTIALS_INTERNAL_SERVICE_URL = 'http://localhost:8005'
 CREDENTIALS_PUBLIC_SERVICE_URL = None
 
-JOURNALS_URL_ROOT = 'https://journals-localhost:18000'
-JOURNALS_API_URL = 'https://journals-localhost:18000/api/v1/'
-
 COMMENTS_SERVICE_URL = 'http://localhost:18080'
 COMMENTS_SERVICE_KEY = 'password'
 
@@ -3423,23 +3426,6 @@ EDX_DRF_EXTENSIONS = {
     'JWT_PAYLOAD_USER_ATTRIBUTE_MAPPING': {},
 }
 
-################################ Settings for Microsites ################################
-
-### Select an implementation for the microsite backend
-# for MICROSITE_BACKEND possible choices are
-# 1. microsite_configuration.backends.filebased.FilebasedMicrositeBackend
-# 2. microsite_configuration.backends.database.DatabaseMicrositeBackend
-MICROSITE_BACKEND = 'microsite_configuration.backends.filebased.FilebasedMicrositeBackend'
-# for MICROSITE_TEMPLATE_BACKEND possible choices are
-# 1. microsite_configuration.backends.filebased.FilebasedMicrositeTemplateBackend
-# 2. microsite_configuration.backends.database.DatabaseMicrositeTemplateBackend
-MICROSITE_TEMPLATE_BACKEND = 'microsite_configuration.backends.filebased.FilebasedMicrositeTemplateBackend'
-# TTL for microsite database template cache
-MICROSITE_DATABASE_TEMPLATE_CACHE_TTL = 5 * 60
-
-MICROSITE_ROOT_DIR = '/edx/app/edxapp/edx-microsite'
-MICROSITE_CONFIGURATION = {}
-
 ################################ Settings for rss_proxy ################################
 
 RSS_PROXY_CACHE_TIMEOUT = 3600  # The length of time we cache RSS retrieved from remote URLs in seconds
@@ -3553,8 +3539,6 @@ ENTERPRISE_ENROLLMENT_API_URL = LMS_INTERNAL_ROOT_URL + LMS_ENROLLMENT_API_PATH
 ENTERPRISE_PUBLIC_ENROLLMENT_API_URL = LMS_ROOT_URL + LMS_ENROLLMENT_API_PATH
 ENTERPRISE_COURSE_ENROLLMENT_AUDIT_MODES = ['audit', 'honor']
 ENTERPRISE_SUPPORT_URL = ''
-# The default value of this needs to be a 16 character string
-ENTERPRISE_REPORTING_SECRET = '0000000000000000'
 ENTERPRISE_CUSTOMER_CATALOG_DEFAULT_CONTENT_FILTER = {}
 ENTERPRISE_CUSTOMER_SUCCESS_EMAIL = "customersuccess@edx.org"
 
@@ -3604,7 +3588,8 @@ SYSTEM_TO_FEATURE_ROLE_MAPPING = {
     ENTERPRISE_OPERATOR_ROLE: [
         ENTERPRISE_DASHBOARD_ADMIN_ROLE,
         ENTERPRISE_CATALOG_ADMIN_ROLE,
-        ENTERPRISE_ENROLLMENT_API_ADMIN_ROLE
+        ENTERPRISE_ENROLLMENT_API_ADMIN_ROLE,
+        ENTERPRISE_REPORTING_CONFIG_ADMIN_ROLE
     ],
 }
 
@@ -3810,3 +3795,7 @@ SOCIAL_AUTH_SAML_SP_PRIVATE_KEY = ""
 SOCIAL_AUTH_SAML_SP_PUBLIC_CERT = ""
 SOCIAL_AUTH_SAML_SP_PRIVATE_KEY_DICT = {}
 SOCIAL_AUTH_SAML_SP_PUBLIC_CERT_DICT = {}
+
+######################### rate limit for yt_video_metadata api ############
+
+RATE_LIMIT_FOR_VIDEO_METADATA_API = '10/minute'

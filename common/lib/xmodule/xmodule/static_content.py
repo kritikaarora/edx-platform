@@ -22,6 +22,7 @@ from docopt import docopt
 from path import Path as path
 
 from xmodule.capa_module import ProblemBlock
+from xmodule.html_module import AboutBlock, CourseInfoBlock, HtmlBlock, StaticTabBlock
 from xmodule.x_module import XModuleDescriptor, HTMLSnippet
 
 LOG = logging.getLogger(__name__)
@@ -63,7 +64,11 @@ class VideoBlock(HTMLSnippet):
 # List of XBlocks which use this static content setup.
 # Should only be used for XModules being converted to XBlocks.
 XBLOCK_CLASSES = [
+    AboutBlock,
+    CourseInfoBlock,
+    HtmlBlock,
     ProblemBlock,
+    StaticTabBlock,
     VideoBlock,
 ]
 
@@ -224,6 +229,12 @@ def _write_files(output_root, contents, generated_suffix_map=None):
         output_file = output_root / filename
 
         not_file = not output_file.isfile()
+
+        # Sometimes content is already unicode and sometimes it's not
+        # so we add this conditional here to make sure that below we're
+        # always working with streams of bytes.
+        if not isinstance(file_content, six.binary_type):
+            file_content = file_content.encode('utf-8')
 
         # not_file is included to short-circuit this check, because
         # read_md5 depends on the file already existing
