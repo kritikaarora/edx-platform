@@ -21,13 +21,13 @@
   {% render_block "css" %}
 
   {% optional_include "head-extra.html"|microsite_template_path %}
-  {% plugin_includes "head-extra" %}
+  {% plugin_includes "lms" "head-extra" %}
 
   <meta name="path_prefix" content="{{EDX_ROOT_URL}}">
 </head>
 
 <body class="{% block bodyclass %}{% endblock %} lang_{{LANGUAGE_CODE}}">
-    {% plugin_includes "body-initial" %}
+    {% plugin_includes "lms" "body-initial" %}
     {% load render_bundle from webpack_loader %}
     {% render_bundle "commons" %}
   <div class="window-wrap" dir="{{LANGUAGE_BIDI|yesno:'rtl,ltr'}}">
@@ -48,7 +48,7 @@
     {% javascript 'base_application' %}
 
     {% render_block "js" %}
-    {% plugin_includes "body-extra" %}
+    {% plugin_includes "lms" "body-extra" %}
 </body>
 </html>
 

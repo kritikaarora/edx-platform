@@ -14,6 +14,7 @@ from openedx.core.djangoapps.util.user_messages import PageLevelMessages
 from openedx.core.djangolib.js_utils import (
     dump_js_escaped_json, js_escaped_string
 )
+from openedx.core.djangoapps.theming.templatetags.plugin_includes import plugin_includes
 from openedx.core.djangolib.markup import HTML
 from openedx.core.release import RELEASE_LINE
 %>
@@ -75,9 +76,11 @@ from openedx.core.release import RELEASE_LINE
     <%include file="widgets/segment-io.html" />
 
     <%block name="header_extras"></%block>
+    ${plugin_includes(context, 'studio', 'head-extra') | n}
   </head>
 
   <body class="${static.dir_rtl()} <%block name='bodyclass'></%block> lang_${LANGUAGE_CODE}">
+    ${plugin_includes(context, 'studio', 'body-initial') | n}
     <%block name="view_notes"></%block>
 
     <a class="nav-skip" href="#main">${_("Skip to main content")}</a>
@@ -168,5 +171,6 @@ from openedx.core.release import RELEASE_LINE
     </%block>
     <%include file="widgets/segment-io-footer.html" />
     <div class="modal-cover"></div>
+    ${plugin_includes(context, 'studio', 'body-extra') | n}
   </body>
 </html>

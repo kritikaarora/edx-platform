@@ -6,13 +6,21 @@ from __future__ import absolute_import
 from openedx.core.lib.plugins import PluginManager
 
 # Stevedore extension point namespaces
-TEMPLATE_INCLUDES_NAMESPACE = 'openedx.template_includes'
+LMS_TEMPLATE_INCLUDES_NAMESPACE = 'lms.template_includes'
+STUDIO_TEMPLATE_INCLUDES_NAMESPACE = 'studio.template_includes'
 
 
-class TemplateIncludesPluginManager(PluginManager):
+class LmsTemplateIncludesPluginManager(PluginManager):
     """
-    Manager for plugins that inject content into template blocks.
+    Manager for plugins that inject content into template blocks in the LMS.
     """
-    NAMESPACE = TEMPLATE_INCLUDES_NAMESPACE
+    NAMESPACE = LMS_TEMPLATE_INCLUDES_NAMESPACE
+
+
+class StudioTemplateIncludesPluginManager(PluginManager):
+    """
+    Manager for plugins that inject content into template blocks in Studio.
+    """
+    NAMESPACE = STUDIO_TEMPLATE_INCLUDES_NAMESPACE
 
 
