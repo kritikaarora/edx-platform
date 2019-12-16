@@ -532,7 +532,7 @@ class TestProblemResponsesReport(TestReportMixin, InstructorTaskModuleTestCase):
             usage_key_str_list=[str(self.course.location)],
         )
 
-        self.assertEquals(len(student_data), 4)
+        self.assertEqual(len(student_data), 4)
 
     @patch(
         'lms.djangoapps.instructor_task.tasks_helper.grades.list_problem_responses',
@@ -551,7 +551,7 @@ class TestProblemResponsesReport(TestReportMixin, InstructorTaskModuleTestCase):
                 course_key=self.course.id,
                 usage_key_str_list=[str(problem.location)],
             )
-        self.assertEquals(len(student_data), 1)
+        self.assertEqual(len(student_data), 1)
         self.assertDictContainsSubset({
             'username': 'student',
             'location': 'test_course > Section > Subsection > Problem1',
@@ -580,7 +580,7 @@ class TestProblemResponsesReport(TestReportMixin, InstructorTaskModuleTestCase):
             course_key=self.course.id,
             usage_key_str_list=[str(self.course.location)],
         )
-        self.assertEquals(len(student_data), 2)
+        self.assertEqual(len(student_data), 2)
         self.assertDictContainsSubset({
             'username': 'student',
             'location': 'test_course > Section > Subsection > Problem1',
@@ -597,7 +597,8 @@ class TestProblemResponsesReport(TestReportMixin, InstructorTaskModuleTestCase):
             'some': 'state2',
             'more': 'state2!',
         }, student_data[1])
-        self.assertEquals(student_data[0]['state'], student_data[1]['state'])
+        self.assertEqual(student_data[0]['state'], student_data[1]['state'])
+        self.assertEqual(student_data[0]['state'], student_data[1]['state'])
 
     def test_build_student_data_for_block_with_real_generate_report_data(self):
         """
@@ -611,7 +612,8 @@ class TestProblemResponsesReport(TestReportMixin, InstructorTaskModuleTestCase):
             course_key=self.course.id,
             usage_key_str_list=[str(self.course.location)],
         )
-        self.assertEquals(len(student_data), 1)
+        self.assertEqual(len(student_data), 1)
+        self.assertEqual(len(student_data), 1)
         self.assertDictContainsSubset({
             'username': 'student',
             'location': 'test_course > Section > Subsection > Problem1',
@@ -637,7 +639,8 @@ class TestProblemResponsesReport(TestReportMixin, InstructorTaskModuleTestCase):
             course_key=self.course.id,
             usage_key_str_list=[str(problem1.location), str(problem2.location)],
         )
-        self.assertEquals(len(student_data), 2)
+        self.assertEqual(len(student_data), 2)
+        self.assertEqual(len(student_data), 2)
         for idx in range(1, 3):
             self.assertDictContainsSubset({
                 'username': 'student',
@@ -682,7 +685,8 @@ class TestProblemResponsesReport(TestReportMixin, InstructorTaskModuleTestCase):
             usage_key_str_list=[str(self.course.location)],
             filter_types=filters,
         )
-        self.assertEquals(len(student_data), filtered_count)
+        self.assertEqual(len(student_data), filtered_count)
+        self.assertEqual(len(student_data), filtered_count)
 
     @patch('lms.djangoapps.instructor_task.tasks_helper.grades.list_problem_responses')
     @patch('xmodule.capa_module.ProblemBlock.generate_report_data', create=True)
@@ -727,7 +731,8 @@ class TestProblemResponsesReport(TestReportMixin, InstructorTaskModuleTestCase):
         report_store = ReportStore.from_config(config_name='GRADES_DOWNLOAD')
         links = report_store.links_for(self.course.id)
 
-        self.assertEquals(len(links), 1)
+        self.assertEqual(len(links), 1)
+        self.assertEqual(len(links), 1)
         self.assertDictContainsSubset({'attempted': 3, 'succeeded': 3, 'failed': 0}, result)
         self.assertIn("report_name", result)
 
@@ -832,12 +837,14 @@ class TestInstructorDetailedEnrollmentReport(TestReportMixin, InstructorTaskCour
         course_reg_codes = CourseRegistrationCode.objects.filter(order=student_cart)
         redeem_url = reverse('register_code_redemption', args=[course_reg_codes[0].code])
         response = self.client.get(redeem_url)
-        self.assertEquals(response.status_code, 200)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, 200)
         # check button text
         self.assertContains(response, 'Activate Course Enrollment')
 
         response = self.client.post(redeem_url)
-        self.assertEquals(response.status_code, 200)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, 200)
 
         task_input = {'features': []}
         with patch('lms.djangoapps.instructor_task.tasks_helper.runner._get_current_task'):
@@ -866,12 +873,14 @@ class TestInstructorDetailedEnrollmentReport(TestReportMixin, InstructorTaskCour
 
         redeem_url = reverse('register_code_redemption', args=['abcde'])
         response = self.client.get(redeem_url)
-        self.assertEquals(response.status_code, 200)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, 200)
         # check button text
         self.assertContains(response, 'Activate Course Enrollment')
 
         response = self.client.post(redeem_url)
-        self.assertEquals(response.status_code, 200)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, 200)
 
         task_input = {'features': []}
         with patch('lms.djangoapps.instructor_task.tasks_helper.runner._get_current_task'):
@@ -907,12 +916,14 @@ class TestInstructorDetailedEnrollmentReport(TestReportMixin, InstructorTaskCour
 
         redeem_url = reverse('register_code_redemption', args=['abcde'])
         response = self.client.get(redeem_url)
-        self.assertEquals(response.status_code, 200)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, 200)
         # check button text
         self.assertContains(response, 'Activate Course Enrollment')
 
         response = self.client.post(redeem_url)
-        self.assertEquals(response.status_code, 200)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, 200)
 
         task_input = {'features': []}
         with patch('lms.djangoapps.instructor_task.tasks_helper.runner._get_current_task'):
@@ -1236,7 +1247,8 @@ class TestProblemReportSplitTestContent(TestReportMixin, TestConditionalContent,
 
         with patch('lms.djangoapps.instructor_task.tasks_helper.runner._get_current_task'):
             ProblemGradeReport.generate(None, None, self.course.id, None, 'graded')
-        self.assertEquals(self.get_csv_row_with_headers(), header_row)
+        self.assertEqual(self.get_csv_row_with_headers(), header_row)
+        self.assertEqual(self.get_csv_row_with_headers(), header_row)
 
 
 class TestProblemReportCohortedContent(TestReportMixin, ContentGroupTestCase, InstructorTaskModuleTestCase):
@@ -1414,12 +1426,14 @@ class TestExecutiveSummaryReport(TestReportMixin, InstructorTaskCourseTestCase):
         course_reg_codes = CourseRegistrationCode.objects.filter(order=self.student1_cart)
         redeem_url = reverse('register_code_redemption', args=[course_reg_codes[0].code])
         response = self.client.get(redeem_url)
-        self.assertEquals(response.status_code, 200)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, 200)
         # check button text
         self.assertContains(response, 'Activate Course Enrollment')
 
         response = self.client.post(redeem_url)
-        self.assertEquals(response.status_code, 200)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, 200)
 
         self.client.login(username=self.student2.username, password='test')
         PaidCourseRegistration.add_to_order(self.student2_cart, self.course.id)
@@ -1578,7 +1592,8 @@ class TestStudentReport(TestReportMixin, InstructorTaskCourseTestCase):
         report_store = ReportStore.from_config(config_name='GRADES_DOWNLOAD')
         links = report_store.links_for(self.course.id)
 
-        self.assertEquals(len(links), 1)
+        self.assertEqual(len(links), 1)
+        self.assertEqual(len(links), 1)
         self.assertDictContainsSubset({'attempted': 1, 'succeeded': 1, 'failed': 0}, result)
 
     @ddt.data([u'student', u'student\xec'])
@@ -1692,7 +1707,8 @@ class TestListMayEnroll(TestReportMixin, InstructorTaskCourseTestCase):
         report_store = ReportStore.from_config(config_name='GRADES_DOWNLOAD')
         links = report_store.links_for(self.course.id)
 
-        self.assertEquals(len(links), 1)
+        self.assertEqual(len(links), 1)
+        self.assertEqual(len(links), 1)
         self.assertDictContainsSubset({'attempted': 1, 'succeeded': 1, 'failed': 0}, result)
 
     def test_unicode_email_addresses(self):
@@ -2750,7 +2766,8 @@ class TestCertificateGeneration(InstructorTaskModuleTestCase):
             [cert for cert in generated_certificates
              if cert.status == CertificateStatuses.unavailable and cert.grade == default_grade]
 
-        self.assertEquals(len(unavailable_certificates), 2)
+        self.assertEqual(len(unavailable_certificates), 2)
+        self.assertEqual(len(unavailable_certificates), 2)
 
     def test_certificate_regeneration_for_students(self):
         """
