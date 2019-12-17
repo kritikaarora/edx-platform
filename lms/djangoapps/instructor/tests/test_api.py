@@ -2930,7 +2930,7 @@ class TestInstructorAPILevelsDataDump(SharedModuleStoreTestCase, LoginEnrollment
         problem_location = ''
 
         response = self.client.post(url, {'problem_location': problem_location})
-        res_json = json.loads(response.content)
+        res_json = json.loads(response.content.decode('utf-8'))
         self.assertEqual(res_json, "Could not find problem with this location.")
 
     def valid_problem_location(test):  # pylint: disable=no-self-argument
