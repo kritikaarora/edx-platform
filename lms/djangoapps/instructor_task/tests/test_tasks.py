@@ -31,7 +31,6 @@ from lms.djangoapps.instructor_task.tasks import (
     rescore_problem,
     reset_problem_attempts
 )
-from lms.djangoapps.instructor_task.tasks_helper.misc import upload_ora2_data, upload_ora2_summary
 from lms.djangoapps.instructor_task.tests.factories import InstructorTaskFactory
 from lms.djangoapps.instructor_task.tests.test_base import InstructorTaskModuleTestCase
 from xmodule.modulestore.exceptions import ItemNotFoundError

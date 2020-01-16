@@ -3435,7 +3435,7 @@ class TestInstructorAPILevelsDataDump(SharedModuleStoreTestCase, LoginEnrollment
             mock_submit_ora2_task.return_value = True
             response = self.client.post(url, {})
         success_status = "The ORA summary report is being created."
-        self.assertIn(success_status, response.content)
+        self.assertContains(response, success_status)
 
     def test_get_ora2_summary_responses_already_running(self):
         url = reverse('export_ora2_summary', kwargs={'course_id': text_type(self.course.id)})
@@ -3446,8 +3446,7 @@ class TestInstructorAPILevelsDataDump(SharedModuleStoreTestCase, LoginEnrollment
             mock_submit_ora2_task.side_effect = AlreadyRunningError(already_running_status)
             response = self.client.post(url, {})
 
-        self.assertEqual(response.status_code, 400)
-        self.assertIn(already_running_status, response.content)
+        self.assertContains(response, already_running_status, status_code=400)
 
     def test_get_student_progress_url(self):
         """ Test that progress_url is in the successful response. """
