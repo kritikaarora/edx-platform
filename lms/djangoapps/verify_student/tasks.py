@@ -1,6 +1,8 @@
 """
 Django Celery tasks for service status app
 """
+
+
 import logging
 from smtplib import SMTPException
 

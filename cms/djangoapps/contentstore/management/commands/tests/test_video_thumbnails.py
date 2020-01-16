@@ -2,15 +2,19 @@
 """
 Tests for course video thumbnails management command.
 """
+
+
 import logging
-from mock import patch
-from django.core.management import call_command, CommandError
+
+from django.core.management import CommandError, call_command
 from django.test import TestCase
-from xmodule.modulestore.tests.django_utils import ModuleStoreTestCase
-from xmodule.modulestore.tests.factories import CourseFactory
-from openedx.core.djangoapps.video_config.models import VideoThumbnailSetting
+from mock import patch
 from six import text_type
 from testfixtures import LogCapture
+
+from openedx.core.djangoapps.video_config.models import VideoThumbnailSetting
+from xmodule.modulestore.tests.django_utils import ModuleStoreTestCase
+from xmodule.modulestore.tests.factories import CourseFactory
 
 LOGGER_NAME = "contentstore.management.commands.video_thumbnails"
 
@@ -32,7 +36,7 @@ class TestArgParsing(TestCase):
     def test_invalid_course(self):
         errstring = "Invalid key specified: <class 'opaque_keys.edx.locator.CourseLocator'>: invalid-course"
         setup_video_thumbnails_config(course_ids='invalid-course')
-        with self.assertRaisesRegexp(CommandError, errstring):
+        with self.assertRaisesRegex(CommandError, errstring):
             call_command('video_thumbnails')
 
 

@@ -1,7 +1,7 @@
 """
 Signal handler for enabling/disabling self-generated certificates based on the course-pacing.
 """
-from __future__ import absolute_import
+
 
 import logging
 
@@ -62,7 +62,7 @@ def _listen_for_certificate_whitelist_append(sender, instance, **kwargs):  # pyl
 
 
 @receiver(COURSE_GRADE_NOW_PASSED, dispatch_uid="new_passing_learner")
-def _listen_for_passing_grade(sender, user, course_id, **kwargs):  # pylint: disable=unused-argument
+def listen_for_passing_grade(sender, user, course_id, **kwargs):  # pylint: disable=unused-argument
     """
     Listen for a learner passing a course, send cert generation task,
     downstream signal from COURSE_GRADE_CHANGED
@@ -146,6 +146,9 @@ def fire_ungenerated_certificate_task(user, course_key, expected_verification_st
     traffic to workers.
     """
 
+    message = u'Entered into Ungenerated Certificate task for {user} : {course}'
+    log.info(message.format(user=user.id, course=course_key))
+
     allowed_enrollment_modes_list = [
         CourseMode.VERIFIED,
         CourseMode.CREDIT_MODE,
@@ -169,3 +172,6 @@ def fire_ungenerated_certificate_task(user, course_key, expected_verification_st
             kwargs['expected_verification_status'] = six.text_type(expected_verification_status)
         generate_certificate.apply_async(countdown=CERTIFICATE_DELAY_SECONDS, kwargs=kwargs)
         return True
+
+    message = u'Certificate Generation task failed for {user} : {course}'
+    log.info(message.format(user=user.id, course=course_key))

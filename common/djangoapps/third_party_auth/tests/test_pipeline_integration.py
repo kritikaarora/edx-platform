@@ -1,20 +1,21 @@
 """Integration tests for pipeline.py."""
 
-import unittest
 
 import datetime
+import unittest
+
+import ddt
 import mock
 import pytz
-import ddt
 from django import test
 from django.contrib.auth import models
 from django.core import mail
 from social_django import models as social_models
 
+from lms.djangoapps.verify_student.models import SSOVerification
 from student.tests.factories import UserFactory
 from third_party_auth import pipeline, provider
 from third_party_auth.tests import testutil
-from lms.djangoapps.verify_student.models import SSOVerification
 
 # Get Django User model by reference from python-social-auth. Not a type
 # constant, pylint.
@@ -80,7 +81,7 @@ class GetProviderUserStatesTestCase(testutil.TestCase, test.TestCase):
 
     def test_returns_empty_list_if_no_enabled_providers(self):
         self.assertFalse(provider.Registry.enabled())
-        self.assertEquals([], pipeline.get_provider_user_states(self.user))
+        self.assertEqual([], pipeline.get_provider_user_states(self.user))
 
     def test_state_not_returned_for_disabled_provider(self):
         disabled_provider = self.configure_google_provider(enabled=False)
@@ -586,3 +587,19 @@ class SetIDVerificationStatusTestCase(testutil.TestCase, test.TestCase):
                 identity_provider_type=self.provider_class_name,
                 identity_provider_slug=self.provider_slug,
             ).count() == 2
+
+    def test_verification_signal(self):
+        """
+        Verification signal is sent upon approval.
+        """
+        with mock.patch('openedx.core.djangoapps.signals.signals.LEARNER_NOW_VERIFIED.send_robust') as mock_signal:
+            # Begin the pipeline.
+            pipeline.set_id_verification_status(
+                auth_entry=pipeline.AUTH_ENTRY_LOGIN,
+                strategy=self.strategy,
+                details=self.details,
+                user=self.user,
+            )
+
+        # Ensure a verification signal was sent
+        self.assertEqual(mock_signal.call_count, 1)

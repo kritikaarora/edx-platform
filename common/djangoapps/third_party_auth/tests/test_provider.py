@@ -1,5 +1,6 @@
 """Unit tests for provider.py."""
 
+
 import unittest
 
 from django.contrib.sites.models import Site

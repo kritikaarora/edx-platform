@@ -1,4 +1,6 @@
 """Django admin interface for the shopping cart models. """
+
+
 from django.contrib import admin
 
 from shoppingcart.models import (

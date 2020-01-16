@@ -1,6 +1,8 @@
 """
 Base test case for the course API views.
 """
+
+
 from django.core.urlresolvers import reverse
 from rest_framework.test import APITestCase
 

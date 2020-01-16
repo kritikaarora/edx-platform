@@ -2,7 +2,7 @@
 """
 LibraryContent: The XBlock used to include blocks from a library in a course.
 """
-from __future__ import absolute_import
+
 
 import json
 import logging
@@ -237,7 +237,7 @@ class LibraryContentModule(LibraryContentFields, XModule, StudioEditableModule):
                 Function that handles the actual publishing.  Must have
                 the signature:
 
-                    <'removed'|'assigned'> -> result:T -> removed:T -> reason:basestring -> None
+                    <'removed'|'assigned'> -> result:T -> removed:T -> reason:str -> None
 
                 Where T is a collection of block_keys as returned by
                 `format_block_keys`.

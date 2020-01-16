@@ -1,4 +1,6 @@
 """Management command to change many user enrollments at once."""
+
+
 import logging
 
 from django.core.management.base import BaseCommand, CommandError

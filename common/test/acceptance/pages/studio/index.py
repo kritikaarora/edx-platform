@@ -1,6 +1,8 @@
 """
 Studio Index, home and dashboard pages. These are the starting pages for users.
 """
+
+
 from bok_choy.page_object import PageObject
 from selenium.webdriver import ActionChains
 from selenium.webdriver.common.keys import Keys

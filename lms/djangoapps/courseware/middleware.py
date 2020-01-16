@@ -2,6 +2,7 @@
 Middleware for the courseware app
 """
 
+
 from django.shortcuts import redirect
 
 from lms.djangoapps.courseware.exceptions import Redirect

@@ -4,11 +4,14 @@ lists of each pytest worker.
 Assumes the following format:
 [test-suite] [worker] RESULT test
 """
-import click
+
+
 import io
-import re
 import os
+import re
 import shutil
+
+import click
 
 
 @click.command()

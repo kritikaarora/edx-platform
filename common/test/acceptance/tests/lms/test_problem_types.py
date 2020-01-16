@@ -1,7 +1,7 @@
 """
 Bok choy acceptance and a11y tests for problem types in the LMS
 """
-from __future__ import absolute_import
+
 
 import random
 import textwrap
@@ -786,7 +786,7 @@ class MultipleChoiceProblemTypeTest(MultipleChoiceProblemTypeBase, ProblemTypeTe
 
         # After submit, the answer should be marked as correct.
         self.problem_page.click_submit()
-        self.assertTrue(self.problem_page.is_correct_choice_highlighted(correct_choices=[3]))
+        self.assertTrue(self.problem_page.is_correct_choice_highlighted(correct_choices=[3], show_answer=False))
 
         # Switch to an incorrect answer. This will hide the correctness indicator.
         self.answer_problem('incorrect')

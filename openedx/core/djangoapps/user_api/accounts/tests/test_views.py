@@ -2,7 +2,7 @@
 """
 Test cases to cover Accounts-related behaviors of the User API application
 """
-from __future__ import absolute_import
+
 
 import datetime
 import hashlib
@@ -12,6 +12,7 @@ from copy import deepcopy
 import ddt
 import mock
 import pytz
+import six
 from django.conf import settings
 from django.core.urlresolvers import reverse
 from django.test.testcases import TransactionTestCase
@@ -125,7 +126,7 @@ class UserAPITestCase(APITestCase):
         template = '{root}/{filename}_{{size}}.{extension}'
         if has_profile_image:
             url_root = 'http://example-storage.com/profile-images'
-            filename = hashlib.md5('secret' + self.user.username).hexdigest()
+            filename = hashlib.md5(('secret' + self.user.username).encode('utf-8')).hexdigest()
             file_extension = 'jpg'
             template += '?v={}'.format(TEST_PROFILE_IMAGE_UPLOADED_AT.strftime("%s"))
         else:
@@ -293,7 +294,7 @@ class TestAccountsAPI(CacheIsolationTestCase, UserAPITestCase):
         self.assertEqual("world peace", data["goals"])
         self.assertTrue(data["is_active"])
         self.assertEqual("Park Ave", data['mailing_address'])
-        self.assertEquals(requires_parental_consent, data["requires_parental_consent"])
+        self.assertEqual(requires_parental_consent, data["requires_parental_consent"])
         self.assertIsNone(data["secondary_email"])
         self.assertEqual(year_of_birth, data["year_of_birth"])
 
@@ -498,7 +499,7 @@ class TestAccountsAPI(CacheIsolationTestCase, UserAPITestCase):
         # Now make sure that the user can get the same information, even if not active
         self.user.is_active = False
         self.user.save()
-        verify_get_own_information(15)
+        verify_get_own_information(13)
 
     def test_get_account_empty_string(self):
         """
@@ -790,7 +791,7 @@ class TestAccountsAPI(CacheIsolationTestCase, UserAPITestCase):
         # than django model id.
         for proficiencies in ([{"code": "en"}, {"code": "fr"}, {"code": "es"}], [{"code": "fr"}], [{"code": "aa"}], []):
             response = self.send_patch(client, {"language_proficiencies": proficiencies})
-            self.assertItemsEqual(response.data["language_proficiencies"], proficiencies)
+            six.assertCountEqual(self, response.data["language_proficiencies"], proficiencies)
 
     @ddt.data(
         (
@@ -820,6 +821,9 @@ class TestAccountsAPI(CacheIsolationTestCase, UserAPITestCase):
         Verify we handle error cases when patching the language_proficiencies
         field.
         """
+        if six.PY3:
+            expected_error_message = six.text_type(expected_error_message).replace('unicode', 'str')
+
         client = self.login_client("client", "user")
         response = self.send_patch(client, {"language_proficiencies": patch_value}, expected_status=400)
         self.assertEqual(

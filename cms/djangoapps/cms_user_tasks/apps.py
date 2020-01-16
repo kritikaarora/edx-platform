@@ -3,6 +3,7 @@ CMS user tasks application configuration
 Signal handlers are connected here.
 """
 
+
 from django.apps import AppConfig
 
 

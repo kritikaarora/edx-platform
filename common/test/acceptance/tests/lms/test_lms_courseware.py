@@ -3,12 +3,12 @@
 End-to-end tests for the LMS.
 """
 
-from __future__ import absolute_import
 
 import json
 from datetime import datetime, timedelta
 
 import ddt
+import six
 from six.moves import range
 
 from openedx.core.lib.tests import attr
@@ -530,9 +530,9 @@ class CoursewareMultipleVerticalsTest(CoursewareMultipleVerticalsTestBase):
         Verifies that the navigation state is as expected.
         """
         self.assertTrue(self.courseware_page.nav.is_on_section(section_title, subsection_title))
-        self.assertEquals(self.courseware_page.sequential_position, subsection_position)
-        self.assertEquals(self.courseware_page.is_next_button_enabled, next_enabled)
-        self.assertEquals(self.courseware_page.is_previous_button_enabled, prev_enabled)
+        self.assertEqual(self.courseware_page.sequential_position, subsection_position)
+        self.assertEqual(self.courseware_page.is_next_button_enabled, next_enabled)
+        self.assertEqual(self.courseware_page.is_previous_button_enabled, prev_enabled)
 
     def test_tab_position(self):
         # test that using the position in the url direct to correct tab in courseware
@@ -939,4 +939,4 @@ class WordCloudTests(UniqueCourseTest):
         self.assertTrue(self.courseware_page.is_word_cloud_rendered)
         self.courseware_page.input_word_cloud('test_wordcloud')
         self.courseware_page.save_word_cloud()
-        self.assertItemsEqual(expected_data, self.courseware_page.word_cloud_answer_list)
+        six.assertCountEqual(self, expected_data, self.courseware_page.word_cloud_answer_list)

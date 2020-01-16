@@ -3,7 +3,6 @@ Minimal Django settings for tests of common/lib.
 Required in Django 1.9+ due to imports of models in stock Django apps.
 """
 
-from __future__ import absolute_import, unicode_literals
 
 import sys
 import tempfile
@@ -70,7 +69,7 @@ INSTALLED_APPS = (
     'openedx.core.djangoapps.video_pipeline',
     'openedx.core.djangoapps.bookmarks.apps.BookmarksConfig',
     'edxval',
-    'courseware',
+    'lms.djangoapps.courseware',
     'student',
     'openedx.core.djangoapps.site_configuration',
     'lms.djangoapps.grades.apps.GradesConfig',
@@ -101,9 +100,6 @@ LMS_ROOT_URL = "http://localhost:8000"
 
 MEDIA_ROOT = tempfile.mkdtemp()
 
-MICROSITE_BACKEND = 'microsite_configuration.backends.filebased.FilebasedMicrositeBackend'
-MICROSITE_TEMPLATE_BACKEND = 'microsite_configuration.backends.filebased.FilebasedMicrositeTemplateBackend'
-
 RECALCULATE_GRADES_ROUTING_KEY = 'edx.core.default'
 POLICY_CHANGE_GRADES_ROUTING_KEY = 'edx.core.default'
 POLICY_CHANGE_TASK_RATE_LIMIT = '300/h'
@@ -118,3 +114,5 @@ USE_TZ = True
 
 RETIREMENT_SERVICE_WORKER_USERNAME = 'RETIREMENT_SERVICE_USER'
 RETIRED_USERNAME_PREFIX = 'retired__user_'
+
+PROCTORING_SETTINGS = {}

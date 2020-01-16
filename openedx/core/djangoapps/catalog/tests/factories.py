@@ -1,6 +1,6 @@
 """Factories for generating fake catalog data."""
 # pylint: disable=missing-docstring, invalid-name
-from __future__ import absolute_import
+
 
 import uuid
 from functools import partial
@@ -197,7 +197,7 @@ def generate_curricula():
 
 class ProgramFactory(DictFactoryBase):
     authoring_organizations = factory.LazyFunction(partial(generate_instances, OrganizationFactory, count=1))
-    applicable_seat_types = []
+    applicable_seat_types = factory.LazyFunction(lambda: [])
     banner_image = factory.LazyFunction(generate_sized_stdimage)
     card_image_url = factory.Faker('image_url')
     corporate_endorsements = factory.LazyFunction(partial(generate_instances, CorporateEndorsementFactory))
@@ -232,7 +232,7 @@ class CurriculumFactory(DictFactoryBase):
     marketing_text_brief = factory.Faker('word')
     is_active = True
     courses = factory.LazyFunction(partial(generate_instances, CourseFactory))
-    programs = []
+    programs = factory.LazyFunction(lambda: [])
 
 
 class ProgramTypeFactory(DictFactoryBase):

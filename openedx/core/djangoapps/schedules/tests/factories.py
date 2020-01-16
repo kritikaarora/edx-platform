@@ -1,7 +1,7 @@
 """
 Factories for schedules tests
 """
-from __future__ import absolute_import
+
 
 import factory
 import pytz
@@ -22,6 +22,8 @@ class ScheduleFactory(factory.DjangoModelFactory):
     class Meta(object):
         model = models.Schedule
 
+    # TODO replace 'start' field with 'start_date' after data migration,
+    #  in removing writes from old field step in column renaming release
     start = factory.Faker('future_datetime', tzinfo=pytz.UTC)
     upgrade_deadline = factory.Faker('future_datetime', tzinfo=pytz.UTC)
     enrollment = factory.SubFactory(CourseEnrollmentFactory)

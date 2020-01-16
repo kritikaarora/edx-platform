@@ -2,6 +2,7 @@
 Utility functions for third_party_auth
 """
 
+
 from django.contrib.auth.models import User
 
 

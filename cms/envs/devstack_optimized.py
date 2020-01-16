@@ -18,6 +18,7 @@ as they are for non-optimized devstack. Instead, update_assets must be
 invoked each time that changes have been made.
 """
 
+
 import os
 
 ########################## Devstack settings ###################################

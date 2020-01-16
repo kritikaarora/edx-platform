@@ -2,7 +2,6 @@
 Tests for Course API forms.
 """
 
-from __future__ import absolute_import
 
 from itertools import product
 
@@ -69,6 +68,7 @@ class TestCourseListGetForm(FormTestMixin, UsernameTestMixin, SharedModuleStoreT
         self.cleaned_data = {
             'username': user.username,
             'org': '',
+            'role': set([]),
             'mobile': None,
             'search_term': '',
             'filter_': None,

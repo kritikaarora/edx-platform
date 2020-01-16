@@ -2,6 +2,7 @@
 Test the views served by third_party_auth.
 """
 
+
 import unittest
 
 import ddt

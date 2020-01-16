@@ -1,5 +1,5 @@
 """Implements basics of Capa, including class CapaModule."""
-from __future__ import absolute_import
+
 
 import json
 import logging
@@ -103,22 +103,41 @@ class ProblemBlock(
         if 'lcp' in self.__dict__:
             del self.__dict__['lcp']
 
-    def student_view(self, _context):
+    def student_view(self, _context, show_detailed_errors=False):
         """
         Return the student view.
         """
         # self.score is initialized in self.lcp but in this method is accessed before self.lcp so just call it first.
-        self.lcp
-        fragment = Fragment(self.get_html())
+        try:
+            self.lcp
+        except Exception as err:
+            html = self.handle_fatal_lcp_error(err if show_detailed_errors else None)
+        else:
+            html = self.get_html()
+        fragment = Fragment(html)
         add_webpack_to_fragment(fragment, 'ProblemBlockPreview')
         shim_xmodule_js(fragment, 'Problem')
         return fragment
+
+    def public_view(self, context):
+        """
+        Return the view seen by users who aren't logged in or who aren't
+        enrolled in the course.
+        """
+        if getattr(self.runtime, 'suppports_state_for_anonymous_users', False):
+            # The new XBlock runtime can generally support capa problems for users who aren't logged in, so show the
+            # normal student_view. To prevent anonymous users from viewing specific problems, adjust course policies
+            # and/or content groups.
+            return self.student_view(context)
+        else:
+            # Show a message that this content requires users to login/enroll.
+            return super(ProblemBlock, self).public_view(context)
 
     def author_view(self, context):
         """
         Renders the Studio preview view.
         """
-        return self.student_view(context)
+        return self.student_view(context, show_detailed_errors=True)
 
     def studio_view(self, _context):
         """
@@ -185,7 +204,7 @@ class ProblemBlock(
                 self.scope_ids.user_id
             )
             _, _, traceback_obj = sys.exc_info()  # pylint: disable=redefined-outer-name
-            six.reraise(ProcessingError(not_found_error_message), None, traceback_obj)
+            six.reraise(ProcessingError, ProcessingError(not_found_error_message), traceback_obj)
 
         except Exception:
             log.exception(
@@ -195,7 +214,7 @@ class ProblemBlock(
                 self.scope_ids.user_id
             )
             _, _, traceback_obj = sys.exc_info()  # pylint: disable=redefined-outer-name
-            six.reraise(ProcessingError(generic_error_message), None, traceback_obj)
+            six.reraise(ProcessingError, ProcessingError(generic_error_message), traceback_obj)
 
         after = self.get_progress()
         after_attempts = self.attempts

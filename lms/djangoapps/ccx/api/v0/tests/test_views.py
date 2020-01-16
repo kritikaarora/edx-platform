@@ -1,7 +1,7 @@
 """
 Tests for the CCX REST APIs.
 """
-from __future__ import absolute_import
+
 
 import json
 import math
@@ -27,7 +27,7 @@ from rest_framework import status
 from rest_framework.test import APITestCase
 from six.moves import range, zip
 
-from courseware import courses
+from lms.djangoapps.courseware import courses
 from lms.djangoapps.ccx.api.v0 import views
 from lms.djangoapps.ccx.models import CcxFieldOverride, CustomCourseForEdX
 from lms.djangoapps.ccx.overrides import override_field_for_ccx
@@ -94,7 +94,7 @@ class CcxRestApiTest(CcxTestCase, APITestCase):
         }
         token_resp = self.client.post(reverse('oauth2:access_token'), data=token_data, format='multipart')
         self.assertEqual(token_resp.status_code, status.HTTP_200_OK)
-        token_resp_json = json.loads(token_resp.content)
+        token_resp_json = json.loads(token_resp.content.decode('utf-8'))
         return u'{token_type} {token}'.format(
             token_type=token_resp_json['token_type'],
             token=token_resp_json['access_token']
@@ -505,7 +505,7 @@ class CcxListTest(CcxRestApiTest):
         self.mstore.update_item(self.course, self.coach.id)
 
         # case with deprecated  master_course_id
-        with mock.patch('courseware.courses.get_course_by_id', autospec=True) as mocked:
+        with mock.patch('lms.djangoapps.courseware.courses.get_course_by_id', autospec=True) as mocked:
             mocked.return_value.id.deprecated = True
             resp = self.client.post(self.list_url, data, format='json', HTTP_AUTHORIZATION=getattr(self, auth_attr))
 
@@ -1105,7 +1105,7 @@ class CcxDetailTest(CcxRestApiTest):
         )
         self.assertEqual(resp.data.get('coach_email'), self.ccx.coach.email)  # pylint: disable=no-member
         self.assertEqual(resp.data.get('master_course_id'), six.text_type(self.ccx.course_id))
-        self.assertItemsEqual(resp.data.get('course_modules'), self.master_course_chapters)
+        six.assertCountEqual(self, resp.data.get('course_modules'), self.master_course_chapters)
 
     @ddt.data(*AUTH_ATTRS)
     def test_delete_detail(self, auth_attr):
@@ -1332,19 +1332,19 @@ class CcxDetailTest(CcxRestApiTest):
         resp = self.client.patch(self.detail_url, data, format='json', HTTP_AUTHORIZATION=getattr(self, auth_attr))
         self.assertEqual(resp.status_code, status.HTTP_204_NO_CONTENT)
         ccx_from_db = CustomCourseForEdX.objects.get(id=self.ccx.id)
-        self.assertItemsEqual(ccx_from_db.structure, data['course_modules'])
+        six.assertCountEqual(self, ccx_from_db.structure, data['course_modules'])
 
         data = {'course_modules': []}
         resp = self.client.patch(self.detail_url, data, format='json', HTTP_AUTHORIZATION=getattr(self, auth_attr))
         self.assertEqual(resp.status_code, status.HTTP_204_NO_CONTENT)
         ccx_from_db = CustomCourseForEdX.objects.get(id=self.ccx.id)
-        self.assertItemsEqual(ccx_from_db.structure, [])
+        six.assertCountEqual(self, ccx_from_db.structure, [])
 
         data = {'course_modules': self.master_course_chapters}
         resp = self.client.patch(self.detail_url, data, format='json', HTTP_AUTHORIZATION=getattr(self, auth_attr))
         self.assertEqual(resp.status_code, status.HTTP_204_NO_CONTENT)
         ccx_from_db = CustomCourseForEdX.objects.get(id=self.ccx.id)
-        self.assertItemsEqual(ccx_from_db.structure, self.master_course_chapters)
+        six.assertCountEqual(self, ccx_from_db.structure, self.master_course_chapters)
 
         data = {'course_modules': None}
         resp = self.client.patch(self.detail_url, data, format='json', HTTP_AUTHORIZATION=getattr(self, auth_attr))
@@ -1357,7 +1357,7 @@ class CcxDetailTest(CcxRestApiTest):
         resp = self.client.patch(self.detail_url, data, format='json', HTTP_AUTHORIZATION=getattr(self, auth_attr))
         self.assertEqual(resp.status_code, status.HTTP_204_NO_CONTENT)
         ccx_from_db = CustomCourseForEdX.objects.get(id=self.ccx.id)
-        self.assertItemsEqual(ccx_from_db.structure, chapters)
+        six.assertCountEqual(self, ccx_from_db.structure, chapters)
 
     @ddt.data(
         ('auth', True),
@@ -1381,7 +1381,7 @@ class CcxDetailTest(CcxRestApiTest):
         else:
             self.assertEqual(resp.status_code, status.HTTP_204_NO_CONTENT)
             ccx_from_db = CustomCourseForEdX.objects.get(id=self.ccx.id)
-            self.assertItemsEqual(ccx_from_db.structure, chapters)
+            six.assertCountEqual(self, ccx_from_db.structure, chapters)
 
     @ddt.data(
         ('auth', True),

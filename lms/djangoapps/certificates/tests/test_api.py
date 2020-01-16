@@ -1,5 +1,5 @@
 """Tests for the certificates Python API. """
-from __future__ import absolute_import
+
 
 import uuid
 from contextlib import contextmanager
@@ -21,7 +21,7 @@ from opaque_keys.edx.locator import CourseLocator
 
 from course_modes.models import CourseMode
 from course_modes.tests.factories import CourseModeFactory
-from courseware.tests.factories import GlobalStaffFactory
+from lms.djangoapps.courseware.tests.factories import GlobalStaffFactory
 from lms.djangoapps.certificates import api as certs_api
 from lms.djangoapps.certificates.models import (
     CertificateGenerationConfiguration,
@@ -762,7 +762,8 @@ class CertificatesBrandingTest(TestCase):
         data = certs_api.get_certificate_header_context(is_secure=True)
 
         # Make sure there are not unexpected keys in dict returned by 'get_certificate_header_context'
-        self.assertItemsEqual(
+        six.assertCountEqual(
+            self,
             list(data.keys()),
             ['logo_src', 'logo_url']
         )
@@ -787,7 +788,8 @@ class CertificatesBrandingTest(TestCase):
         data = certs_api.get_certificate_footer_context()
 
         # Make sure there are not unexpected keys in dict returned by 'get_certificate_footer_context'
-        self.assertItemsEqual(
+        six.assertCountEqual(
+            self,
             list(data.keys()),
             ['company_about_url', 'company_privacy_url', 'company_tos_url']
         )

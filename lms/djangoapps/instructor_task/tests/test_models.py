@@ -1,11 +1,11 @@
 """
 Tests for instructor_task/models.py.
 """
-from __future__ import absolute_import
+
 
 import copy
 import time
-from cStringIO import StringIO
+from six import StringIO
 
 import boto
 from django.conf import settings
@@ -14,8 +14,27 @@ from mock import patch
 from opaque_keys.edx.locator import CourseLocator
 
 from common.test.utils import MockS3Mixin
-from lms.djangoapps.instructor_task.models import ReportStore
+from lms.djangoapps.instructor_task.models import InstructorTask, ReportStore, TASK_INPUT_LENGTH
 from lms.djangoapps.instructor_task.tests.test_base import TestReportMixin
+
+
+class TestInstructorTasksModel(TestCase):
+    """
+    Test validations in instructor task model
+    """
+    def test_task_input_valid_length(self):
+        """
+        Test allowed length of task_input field
+        """
+        task_input = 's' * TASK_INPUT_LENGTH
+        with self.assertRaises(AttributeError):
+            InstructorTask.create(
+                course_id='dummy_course_id',
+                task_type='dummy type',
+                task_key='dummy key',
+                task_input=task_input,
+                requester='dummy requester',
+            )
 
 
 class ReportStoreTestMixin(object):
@@ -65,7 +84,11 @@ class LocalFSReportStoreTestCase(ReportStoreTestMixin, TestReportMixin, SimpleTe
         return ReportStore.from_config(config_name='GRADES_DOWNLOAD')
 
 
-@patch.dict(settings.GRADES_DOWNLOAD, {'STORAGE_TYPE': 's3'})
+@patch.dict(settings.GRADES_DOWNLOAD, {
+    'STORAGE_TYPE': 's3',
+    # Strip the leading `/`, because boto doesn't want it
+    'ROOT_PATH': settings.GRADES_DOWNLOAD['ROOT_PATH'].lstrip('/')
+})
 class S3ReportStoreTestCase(MockS3Mixin, ReportStoreTestMixin, TestReportMixin, SimpleTestCase):
     """
     Test the old S3ReportStore configuration.
@@ -106,7 +129,7 @@ class DjangoStorageReportStoreS3TestCase(MockS3Mixin, ReportStoreTestMixin, Test
         storage.
         """
         test_settings = copy.deepcopy(settings.GRADES_DOWNLOAD)
-        test_settings['STORAGE_CLASS'] = 'openedx.core.storage.S3ReportStorage'
+        test_settings['STORAGE_CLASS'] = 'storages.backends.s3boto.S3BotoStorage'
         test_settings['STORAGE_KWARGS'] = {
             'bucket': settings.GRADES_DOWNLOAD['BUCKET'],
             'location': settings.GRADES_DOWNLOAD['ROOT_PATH'],

@@ -2,17 +2,18 @@
 Grading tests
 """
 
+
 import unittest
 from datetime import datetime, timedelta
 
 import ddt
 from pytz import UTC
-from lms.djangoapps.grades.scores import compute_percent
+import six
 from six import text_type
+
+from lms.djangoapps.grades.scores import compute_percent
 from xmodule import graders
-from xmodule.graders import (
-    AggregatedScore, ProblemScore, ShowCorrectness, aggregate_scores
-)
+from xmodule.graders import AggregatedScore, ProblemScore, ShowCorrectness, aggregate_scores
 
 
 class GradesheetTest(unittest.TestCase):
@@ -315,7 +316,8 @@ class GraderTest(unittest.TestCase):
         (
             # no drop_count
             {'type': "Homework", 'min_count': 0},
-            u"__init__() takes at least 4 arguments (3 given)"
+            # pylint: disable=line-too-long
+            u"__init__() takes at least 4 arguments (3 given)" if six.PY2 else u"__init__() missing 1 required positional argument: 'drop_count'"
         ),
     )
     @ddt.unpack
@@ -403,7 +405,7 @@ class ShowCorrectnessTest(unittest.TestCase):
             due_date = None
         else:
             due_date = getattr(self, due_date_str)
-        self.assertEquals(
+        self.assertEqual(
             ShowCorrectness.correctness_available(ShowCorrectness.PAST_DUE, due_date, has_staff_access),
             expected_result
         )
