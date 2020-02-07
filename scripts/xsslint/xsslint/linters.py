@@ -439,7 +439,7 @@ class JavaScriptLinter(BaseLinter):
         """
         Checks that interpolate() calls are safe.
 
-        Only use of StringUtils.interpolate() or HtmlUtils.interpolateText()
+        Only use of StringUtils.interpolate() or HtmlUtils.interpolateHtml()
         are safe.
 
         Arguments:
@@ -448,7 +448,8 @@ class JavaScriptLinter(BaseLinter):
 
         """
         # Ignores calls starting with "StringUtils.", because those are safe
-        regex = re.compile(r"(?<!StringUtils).interpolate\(")
+        # XXX: this will false positive on any function that ends with 'interpolate'...
+        regex = re.compile(r"(?<!StringUtils\.)interpolate\(")
         for function_match in regex.finditer(file_contents):
             expression = self._get_expression_for_function(file_contents, function_match)
             results.violations.append(ExpressionRuleViolation(self.ruleset.javascript_interpolate, expression))
