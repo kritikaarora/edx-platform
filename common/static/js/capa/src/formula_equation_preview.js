@@ -13,7 +13,37 @@ formulaEquationPreview.enable = function() {
     function setupInput() {
         var $this = $(this); // cache the jQuery object
 
-        var $preview = $('#' + this.id + '_preview');
+        var id;
+        // Correctly escape the id before passing to the jQuery selector, otherwise this will fail if this.id contains
+        // special characters as defined by css.
+        // TODO: if this escaping is also required elsewhere, it may be useful to add a global CSS.escape polyfill and
+        // use that directly.
+        if (window.CSS && window.CSS.escape) {
+            id = CSS.escape(this.id);
+        } else {
+            // CSS escape alternative borrowed from jQuery.escapeSelector (new in version 3; this whole block can be
+            // replaced once we upgrade).
+            var rcssescape = /([\0-\x1f\x7f]|^-?\d)|^-$|[^\x80-\uFFFF\w-]/g;
+
+            function fcssescape( ch, asCodePoint ) {
+                if ( asCodePoint ) {
+
+                    // U+0000 NULL becomes U+FFFD REPLACEMENT CHARACTER
+                    if ( ch === "\0" ) {
+                        return "\uFFFD";
+                    }
+
+                    // Control characters and (dependent upon position) numbers get escaped as code points
+                    return ch.slice( 0, -1 ) + "\\" + ch.charCodeAt( ch.length - 1 ).toString( 16 ) + " ";
+                }
+
+                // Other potentially-special ASCII characters get backslash-escaped
+                return "\\" + ch;
+            }
+            id = this.id.replace(rcssescape, fcssescape);
+        }
+
+        var $preview = $('#' + id + '_preview');
         var inputData = {
             // These are the mutable values
 
