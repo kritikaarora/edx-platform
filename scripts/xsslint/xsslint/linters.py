@@ -457,15 +457,13 @@ class JavaScriptLinter(BaseLinter):
         """
         Checks that only necessary escape() are used.
 
-        Allows for _.escape(), although this shouldn't be the recommendation.
-
         Arguments:
             file_contents: The contents of the JavaScript file.
             results: A file results objects to which violations will be added.
 
         """
-        # Ignores calls starting with "_.", because those are safe
-        regex = regex = re.compile(r"(?<!_).escape\(")
+        # Ensure that calls to fooescape or foo.escape are ignored; they aren't the dangerous escape functions.
+        regex = re.compile(r"(?:^|(?<![\w.$]))escape\(")
         for function_match in regex.finditer(file_contents):
             expression = self._get_expression_for_function(file_contents, function_match)
             results.violations.append(ExpressionRuleViolation(self.ruleset.javascript_escape, expression))
