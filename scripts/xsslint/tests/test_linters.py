@@ -421,9 +421,15 @@ class TestJavaScriptLinter(TestLinter):
 
     @data(
         {'template': '_.escape(message)', 'rule': None},
-        {'template': 'anything.escape(message)', 'rule': JAVASCRIPT_LINTER_RULESET.javascript_escape},
+        {'template': 'anything.escape(message)', 'rule': None},
+        {'template': 'anythingescape(message)', 'rule': None},
+        {'template': '$escape(message)', 'rule': None},
+        {'template': '_escape(message)', 'rule': None},
+        {'template': 'escape(message)', 'rule': JAVASCRIPT_LINTER_RULESET.javascript_escape},
+        {'template': '(escape(message))', 'rule': JAVASCRIPT_LINTER_RULESET.javascript_escape},
+        {'template': '  escape(message))', 'rule': JAVASCRIPT_LINTER_RULESET.javascript_escape},
     )
-    def test_javascript_interpolate(self, data):
+    def test_javascript_escape(self, data):
         """
         Test check_javascript_file_is_safe with interpolate()
         """
