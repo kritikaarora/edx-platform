@@ -117,8 +117,12 @@ class HtmlBlock(
     def get_html(self):
         """ Returns html required for rendering the block. """
         # pylint: disable=no-member
-        if self.data is not None and getattr(self.system, 'anonymous_student_id', None) is not None:
-            return self.data.replace("%%USER_ID%%", self.system.anonymous_student_id)
+        if self.data:
+            data = self.data
+            if getattr(self.runtime, 'anonymous_student_id', None):
+                data = data.replace("%%USER_ID%%", self.runtime.anonymous_student_id)
+            data = data.replace("%%COURSE_ID%%", six.text_type(self.scope_ids.usage_id.context_key))
+            return data
         return self.data
 
     def studio_view(self, _context):
@@ -461,10 +465,9 @@ class CourseInfoBlock(CourseInfoFields, HtmlBlock):
         # When we switch this to an XBlock, we can merge this with student_view,
         # but for now the XModule mixin requires that this method be defined.
         # pylint: disable=no-member
-        if self.data != "":
-            if self.system.anonymous_student_id:
-                return self.data.replace("%%USER_ID%%", self.system.anonymous_student_id)
-            return self.data
+        data = HtmlBlock.get_html(self)
+        if data != "":
+            return data
         else:
             # This should no longer be called on production now that we are using a separate updates page
             # and using a fragment HTML file - it will be called in tests until those are removed.
