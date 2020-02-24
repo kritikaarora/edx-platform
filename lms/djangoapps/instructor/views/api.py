@@ -1317,7 +1317,7 @@ def get_students_features(request, course_id, csv=False):  # pylint: disable=red
         query_features = [
             'id', 'username', 'name', 'email', 'language', 'location',
             'year_of_birth', 'gender', 'level_of_education', 'mailing_address',
-            'goals', 'enrollment_mode', 'verification_status',
+            'goals', 'country', 'enrollment_mode', 'verification_status',
             'last_login', 'date_joined',
         ]
 
@@ -1340,6 +1340,7 @@ def get_students_features(request, course_id, csv=False):  # pylint: disable=red
         'verification_status': _('Verification Status'),
         'last_login': _('Last Login'),
         'date_joined': _('Date Joined'),
+        'country': _('Country'),
     }
 
     if is_course_cohorted(course.id):
@@ -1350,12 +1351,6 @@ def get_students_features(request, course_id, csv=False):  # pylint: disable=red
     if course.teams_enabled:
         query_features.append('team')
         query_features_names['team'] = _('Team')
-
-    # For compatibility reasons, city and country should always appear last.
-    query_features.append('city')
-    query_features_names['city'] = _('City')
-    query_features.append('country')
-    query_features_names['country'] = _('Country')
 
     if not csv:
         student_data = instructor_analytics.basic.enrolled_students_features(course_key, query_features)
