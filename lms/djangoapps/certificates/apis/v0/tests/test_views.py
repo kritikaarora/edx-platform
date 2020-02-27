@@ -1,12 +1,13 @@
 """
 Tests for the Certificate REST APIs.
 """
-from __future__ import absolute_import
+
 
 from itertools import product
 
 import ddt
 import six
+from django.conf import settings
 from django.urls import reverse
 from django.utils import timezone
 from freezegun import freeze_time
@@ -43,6 +44,13 @@ class CertificatesDetailRestApiTest(AuthAndScopesTestMixin, SharedModuleStoreTes
             number='verified',
             display_name='Verified Course'
         )
+        CourseOverviewFactory.create(
+            id=cls.course.id,
+            display_org_with_default='edx',
+            display_name='Verified Course',
+            cert_html_view_enabled=True,
+            self_paced=True,
+        )
 
     def setUp(self):
         freezer = freeze_time(self.now)
@@ -51,7 +59,7 @@ class CertificatesDetailRestApiTest(AuthAndScopesTestMixin, SharedModuleStoreTes
 
         super(CertificatesDetailRestApiTest, self).setUp()
 
-        GeneratedCertificateFactory.create(
+        self.cert = GeneratedCertificateFactory.create(
             user=self.student,
             course_id=self.course.id,
             status=CertificateStatuses.downloadable,
@@ -102,6 +110,25 @@ class CertificatesDetailRestApiTest(AuthAndScopesTestMixin, SharedModuleStoreTes
             'no_certificate_for_user',
         )
 
+    def test_no_certificate_configuration(self):
+        """
+        Verify that certificate is not returned if there is no active
+        certificate configuration.
+        """
+        self.cert.download_url = ''
+        self.cert.save()
+        resp = self.get_response(
+            AuthType.session,
+            requesting_user=self.student,
+            requested_user=self.student,
+        )
+        self.assertEqual(resp.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertIn('error_code', resp.data)
+        self.assertEqual(
+            resp.data['error_code'],
+            'no_certificate_configuration_for_course',
+        )
+
 
 @ddt.ddt
 class CertificatesListRestApiTest(AuthAndScopesTestMixin, SharedModuleStoreTestCase, APITestCase):
@@ -135,7 +162,7 @@ class CertificatesListRestApiTest(AuthAndScopesTestMixin, SharedModuleStoreTestC
 
         super(CertificatesListRestApiTest, self).setUp()
 
-        GeneratedCertificateFactory.create(
+        self.cert = GeneratedCertificateFactory.create(
             user=self.student,
             course_id=self.course.id,
             status=CertificateStatuses.downloadable,
@@ -155,7 +182,7 @@ class CertificatesListRestApiTest(AuthAndScopesTestMixin, SharedModuleStoreTestC
             }
         )
 
-    def assert_success_response_for_student(self, response):
+    def assert_success_response_for_student(self, response, download_url='www.google.com'):
         """ This method is required by AuthAndScopesTestMixin. """
         self.assertEqual(
             response.data,
@@ -169,7 +196,7 @@ class CertificatesListRestApiTest(AuthAndScopesTestMixin, SharedModuleStoreTestC
                 'modified_date': self.now,
                 'status': CertificateStatuses.downloadable,
                 'is_passing': True,
-                'download_url': 'www.google.com',
+                'download_url': download_url,
                 'grade': '0.88',
             }]
         )
@@ -270,7 +297,7 @@ class CertificatesListRestApiTest(AuthAndScopesTestMixin, SharedModuleStoreTestC
     def test_query_counts(self):
         # Test student with no certificates
         student_no_cert = UserFactory.create(password=self.user_password)
-        with self.assertNumQueries(22):
+        with self.assertNumQueries(21):
             resp = self.get_response(
                 AuthType.jwt,
                 requesting_user=student_no_cert,
@@ -280,7 +307,7 @@ class CertificatesListRestApiTest(AuthAndScopesTestMixin, SharedModuleStoreTestC
             self.assertEqual(len(resp.data), 0)
 
         # Test student with 1 certificate
-        with self.assertNumQueries(17):
+        with self.assertNumQueries(14):
             resp = self.get_response(
                 AuthType.jwt,
                 requesting_user=self.student,
@@ -320,7 +347,7 @@ class CertificatesListRestApiTest(AuthAndScopesTestMixin, SharedModuleStoreTestC
             download_url='www.google.com',
             grade="0.88",
         )
-        with self.assertNumQueries(17):
+        with self.assertNumQueries(14):
             resp = self.get_response(
                 AuthType.jwt,
                 requesting_user=student_2_certs,
@@ -328,3 +355,58 @@ class CertificatesListRestApiTest(AuthAndScopesTestMixin, SharedModuleStoreTestC
             )
             self.assertEqual(resp.status_code, status.HTTP_200_OK)
             self.assertEqual(len(resp.data), 2)
+
+    @patch.dict(settings.FEATURES, {'CERTIFICATES_HTML_VIEW': True})
+    def test_with_no_certificate_configuration(self):
+        """
+        Verify that certificates are not returned until there is an active
+        certificate configuration.
+        """
+        self.cert.download_url = ''
+        self.cert.save()
+
+        response = self.get_response(
+            AuthType.jwt,
+            requesting_user=self.student,
+            requested_user=self.student,
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data, [])
+
+        self.course_overview.has_any_active_web_certificate = True
+        self.course_overview.save()
+
+        response = self.get_response(
+            AuthType.jwt,
+            requesting_user=self.student,
+            requested_user=self.student,
+        )
+        kwargs = {"certificate_uuid": self.cert.verify_uuid}
+        expected_download_url = reverse('certificates:render_cert_by_uuid', kwargs=kwargs)
+        self.assert_success_response_for_student(response, download_url=expected_download_url)
+
+    @patch('lms.djangoapps.certificates.apis.v0.views.get_course_run_details')
+    def test_certificate_without_course(self, mock_get_course_run_details):
+        """
+        Verify that certificates are returned for deleted XML courses.
+        """
+        expected_course_name = 'Test Course Title'
+        mock_get_course_run_details.return_value = {'title': expected_course_name}
+        xml_course_key = self.store.make_course_key('edX', 'testDeletedCourse', '2020')
+        cert_for_deleted_course = GeneratedCertificateFactory.create(
+            user=self.student,
+            course_id=xml_course_key,
+            status=CertificateStatuses.downloadable,
+            mode='honor',
+            download_url='www.edx.org/honor-cert-for-deleted-course.pdf',
+            grade="0.88"
+        )
+
+        response = self.get_response(
+            AuthType.jwt,
+            requesting_user=self.student,
+            requested_user=self.student,
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertContains(response, cert_for_deleted_course.download_url)
+        self.assertContains(response, expected_course_name)

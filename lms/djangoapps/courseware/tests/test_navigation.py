@@ -1,7 +1,7 @@
 """
 This test file will run through some LMS test scenarios regarding access and navigation of the LMS
 """
-from __future__ import absolute_import
+
 
 import time
 
@@ -12,8 +12,8 @@ from mock import patch
 from six import text_type
 from six.moves import range
 
-from courseware.tests.factories import GlobalStaffFactory
-from courseware.tests.helpers import LoginEnrollmentTestCase
+from lms.djangoapps.courseware.tests.factories import GlobalStaffFactory
+from lms.djangoapps.courseware.tests.helpers import LoginEnrollmentTestCase
 from openedx.core.djangoapps.waffle_utils.testutils import override_waffle_flag
 from openedx.features.course_experience import COURSE_OUTLINE_PAGE_FLAG
 from student.tests.factories import UserFactory
@@ -242,7 +242,7 @@ class TestNavigation(SharedModuleStoreTestCase, LoginEnrollmentTestCase):
             kwargs={'course_id': test_course_id}
         )
         response = self.assert_request_status_code(200, url)
-        self.assertIn("No content has been added to this course", response.content.decode('utf-8'))
+        self.assertContains(response, "No content has been added to this course")
 
         section = ItemFactory.create(
             parent_location=self.test_course.location,
@@ -253,8 +253,8 @@ class TestNavigation(SharedModuleStoreTestCase, LoginEnrollmentTestCase):
             kwargs={'course_id': test_course_id}
         )
         response = self.assert_request_status_code(200, url)
-        self.assertNotIn("No content has been added to this course", response.content.decode('utf-8'))
-        self.assertIn("New Section", response.content.decode('utf-8'))
+        self.assertNotContains(response, "No content has been added to this course")
+        self.assertContains(response, "New Section")
 
         subsection = ItemFactory.create(
             parent_location=section.location,
@@ -265,8 +265,8 @@ class TestNavigation(SharedModuleStoreTestCase, LoginEnrollmentTestCase):
             kwargs={'course_id': test_course_id}
         )
         response = self.assert_request_status_code(200, url)
-        self.assertIn("New Subsection", response.content.decode('utf-8'))
-        self.assertNotIn("sequence-nav", response.content.decode('utf-8'))
+        self.assertContains(response, "New Subsection")
+        self.assertNotContains(response, "sequence-nav")
 
         ItemFactory.create(
             parent_location=subsection.location,

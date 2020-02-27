@@ -1,7 +1,7 @@
 """
 This file contains celery tasks for contentstore views
 """
-from __future__ import absolute_import
+
 
 import base64
 import json
@@ -12,7 +12,6 @@ from datetime import datetime
 from math import ceil
 from tempfile import NamedTemporaryFile, mkdtemp
 
-import six
 from celery import group
 from celery.task import task
 from celery.utils.log import get_task_logger
@@ -27,20 +26,19 @@ from django.core.files.base import ContentFile
 from django.test import RequestFactory
 from django.utils.text import get_valid_filename
 from django.utils.translation import ugettext as _
-from djcelery.common import respect_language
 from opaque_keys.edx.keys import CourseKey
 from opaque_keys.edx.locator import LibraryLocator, BlockUsageLocator
 from organizations.models import OrganizationCourse
 from path import Path as path
 from pytz import UTC
-from six import iteritems, text_type
+from six import iteritems, text_type, binary_type
 from six.moves import range
 from user_tasks.models import UserTaskArtifact, UserTaskStatus
 from user_tasks.tasks import UserTask
 
 from contentstore.courseware_index import CoursewareSearchIndexer, LibrarySearchIndexer, SearchIndexingError
 from contentstore.storage import course_import_export_storage
-from contentstore.utils import initialize_permissions, reverse_usage_url
+from contentstore.utils import initialize_permissions, reverse_usage_url, translation_language
 from contentstore.video_utils import scrape_youtube_thumbnail
 from course_action_state.models import CourseRerunState
 from models.settings.course_metadata import CourseMetadata
@@ -529,7 +527,7 @@ def _parse_time(time_isoformat):
     ).replace(tzinfo=UTC)
 
 
-@task()
+@task(routing_key=settings.UPDATE_SEARCH_INDEX_JOB_QUEUE)
 def update_search_index(course_id, triggered_time_isoformat):
     """ Updates course search index. """
     try:
@@ -597,11 +595,11 @@ def export_olx(self, user_id, course_key_string, language):
     try:
         user = User.objects.get(pk=user_id)
     except User.DoesNotExist:
-        with respect_language(language):
+        with translation_language(language):
             self.status.fail(_(u'Unknown User ID: {0}').format(user_id))
         return
     if not has_course_author_access(user, courselike_key):
-        with respect_language(language):
+        with translation_language(language):
             self.status.fail(_(u'Permission denied'))
         return
 
@@ -728,11 +726,11 @@ def import_olx(self, user_id, course_key_string, archive_path, archive_name, lan
     try:
         user = User.objects.get(pk=user_id)
     except User.DoesNotExist:
-        with respect_language(language):
+        with translation_language(language):
             self.status.fail(_(u'Unknown User ID: {0}').format(user_id))
         return
     if not has_course_author_access(user, courselike_key):
-        with respect_language(language):
+        with translation_language(language):
             self.status.fail(_(u'Permission denied'))
         return
 
@@ -750,13 +748,13 @@ def import_olx(self, user_id, course_key_string, archive_path, archive_name, lan
     # Locate the uploaded OLX archive (and download it from S3 if necessary)
     # Do everything in a try-except block to make sure everything is properly cleaned up.
     data_root = path(settings.GITHUB_REPO_ROOT)
-    subdir = base64.urlsafe_b64encode(six.b(repr(courselike_key)))
-    course_dir = data_root / subdir.decode('utf-8')
+    subdir = base64.urlsafe_b64encode(repr(courselike_key).encode('utf-8')).decode('utf-8')
+    course_dir = data_root / subdir
     try:
         self.status.set_state(u'Unpacking')
 
         if not archive_name.endswith(u'.tar.gz'):
-            with respect_language(language):
+            with translation_language(language):
                 self.status.fail(_(u'We only support uploading a .tar.gz file.'))
                 return
 
@@ -769,7 +767,7 @@ def import_olx(self, user_id, course_key_string, archive_path, archive_name, lan
         # Copy the OLX archive from where it was uploaded to (S3, Swift, file system, etc.)
         if not course_import_export_storage.exists(archive_path):
             LOGGER.info(u'Course import %s: Uploaded file %s not found', courselike_key, archive_path)
-            with respect_language(language):
+            with translation_language(language):
                 self.status.fail(_(u'Tar file not found'))
             return
         with course_import_export_storage.open(archive_path, 'rb') as source:
@@ -815,7 +813,7 @@ def import_olx(self, user_id, course_key_string, archive_path, archive_name, lan
             safetar_extractall(tar_file, (course_dir + u'/'))
         except SuspiciousOperation as exc:
             LOGGER.info(u'Course import %s: Unsafe tar file - %s', courselike_key, exc.args[0])
-            with respect_language(language):
+            with translation_language(language):
                 self.status.fail(_(u'Unsafe tar file. Aborting import.'))
             return
         finally:
@@ -848,7 +846,7 @@ def import_olx(self, user_id, course_key_string, archive_path, archive_name, lan
 
         dirpath = get_dir_for_filename(course_dir, root_name)
         if not dirpath:
-            with respect_language(language):
+            with translation_language(language):
                 self.status.fail(_(u'Could not find the {0} file in the package.').format(root_name))
                 return
 

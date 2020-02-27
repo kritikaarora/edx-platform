@@ -2,7 +2,6 @@
 Module rendering
 """
 
-from __future__ import absolute_import
 
 import hashlib
 import json
@@ -46,17 +45,18 @@ from xblock.runtime import KvsFieldData
 
 import static_replace
 from capa.xqueue_interface import XQueueInterface
-from courseware.access import get_user_role, has_access
-from courseware.entrance_exams import user_can_skip_entrance_exam, user_has_passed_entrance_exam
-from courseware.masquerade import (
+from lms.djangoapps.courseware.access import get_user_role, has_access
+from lms.djangoapps.courseware.entrance_exams import user_can_skip_entrance_exam, user_has_passed_entrance_exam
+from lms.djangoapps.courseware.masquerade import (
     MasqueradingKeyValueStore,
     filter_displayed_blocks,
     is_masquerading_as_specific_student,
     setup_masquerade
 )
-from courseware.model_data import DjangoKeyValueStore, FieldDataCache
+from lms.djangoapps.courseware.model_data import DjangoKeyValueStore, FieldDataCache
 from edxmako.shortcuts import render_to_string
 from lms.djangoapps.courseware.field_overrides import OverrideFieldData
+from lms.djangoapps.courseware.services import UserStateService
 from lms.djangoapps.grades.api import GradesUtilService
 from lms.djangoapps.grades.api import signals as grades_signals
 from lms.djangoapps.lms_xblock.field_data import LmsFieldData
@@ -68,7 +68,7 @@ from openedx.core.djangoapps.crawlers.models import CrawlersConfig
 from openedx.core.djangoapps.credit.services import CreditService
 from openedx.core.djangoapps.util.user_utils import SystemUser
 from openedx.core.djangolib.markup import HTML
-from openedx.core.lib.api.authentication import OAuth2AuthenticationAllowInactiveUser
+from openedx.core.lib.api.authentication import BearerAuthenticationAllowInactiveUser
 from openedx.core.lib.api.view_utils import view_auth_classes
 from openedx.core.lib.gating.services import GatingService
 from openedx.core.lib.license import wrap_with_license
@@ -76,6 +76,7 @@ from openedx.core.lib.url_utils import quote_slashes, unquote_slashes
 from openedx.core.lib.xblock_utils import (
     add_staff_markup,
     get_aside_from_xblock,
+    hash_resource,
     is_xblock_aside,
     replace_course_urls,
     replace_jump_to_id_urls,
@@ -84,6 +85,7 @@ from openedx.core.lib.xblock_utils import (
 from openedx.core.lib.xblock_utils import request_token as xblock_request_token
 from openedx.core.lib.xblock_utils import wrap_xblock
 from openedx.features.course_duration_limits.access import course_expiration_wrapper
+from openedx.features.discounts.utils import offer_banner_wrapper
 from student.models import anonymous_id_for_user, user_by_anonymous_id
 from student.roles import CourseBetaTesterRole
 from track import contexts
@@ -568,7 +570,6 @@ def get_module_system_for_user(
         else:
             BlockCompletion.objects.submit_completion(
                 user=user,
-                course_key=course_id,
                 block_key=block.scope_ids.usage_id,
                 completion=event['completion'],
             )
@@ -577,7 +578,7 @@ def get_module_system_for_user(
         """
         Submit a grade for the block.
         """
-        if not user.is_anonymous():
+        if not user.is_anonymous:
             grades_signals.SCORE_PUBLISHED.send(
                 sender=None,
                 block=block,
@@ -613,7 +614,6 @@ def get_module_system_for_user(
             if not getattr(block, 'has_custom_completion', False):
                 BlockCompletion.objects.submit_completion(
                     user=user,
-                    course_key=course_id,
                     block_key=block.scope_ids.usage_id,
                     completion=1.0,
                 )
@@ -730,6 +730,7 @@ def get_module_system_for_user(
 
     block_wrappers.append(partial(display_access_messages, user))
     block_wrappers.append(partial(course_expiration_wrapper, user))
+    block_wrappers.append(partial(offer_banner_wrapper, user))
 
     if settings.FEATURES.get('DISPLAY_DEBUG_INFO_TO_STAFF'):
         if is_masquerading_as_specific_student(user, course_id):
@@ -818,6 +819,7 @@ def get_module_system_for_user(
             'bookmarks': BookmarksService(user=user),
             'gating': GatingService(),
             'grade_utils': GradesUtilService(course_id=course_id),
+            'user_state': UserStateService(),
         },
         get_user_role=lambda: get_user_role(user, course_id),
         descriptor_runtime=descriptor._runtime,  # pylint: disable=protected-access
@@ -1031,7 +1033,7 @@ def handle_xblock_callback(request, course_id, usage_id, handler, suffix=None):
     # to avoid introducing backwards-incompatible changes.
     # You can see https://github.com/edx/XBlock/pull/383 for more details.
     else:
-        authentication_classes = (JwtAuthentication, OAuth2AuthenticationAllowInactiveUser)
+        authentication_classes = (JwtAuthentication, BearerAuthenticationAllowInactiveUser)
         authenticators = [auth() for auth in authentication_classes]
 
         for authenticator in authenticators:
@@ -1217,16 +1219,6 @@ def _invoke_xblock_handler(request, course_id, usage_id, handler, suffix, course
             raise
 
     return webob_to_django_response(resp)
-
-
-def hash_resource(resource):
-    """
-    Hash a :class:`web_fragments.fragment.FragmentResource
-    """
-    md5 = hashlib.md5()
-    for data in resource:
-        md5.update(repr(data).encode('utf-8'))
-    return md5.hexdigest()
 
 
 @api_view(['GET'])

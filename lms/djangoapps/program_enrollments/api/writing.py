@@ -4,7 +4,7 @@ Python API functions related to writing program enrollments.
 Outside of this subpackage, import these functions
 from `lms.djangoapps.program_enrollments.api`.
 """
-from __future__ import absolute_import, unicode_literals
+
 
 import logging
 
@@ -220,12 +220,12 @@ def write_program_course_enrollments(
     to_save = []
     for external_key, request in requests_by_key.items():
         status = request['status']
+        if status not in ProgramCourseEnrollmentStatuses.__ALL__:
+            results[external_key] = ProgramCourseOpStatuses.INVALID_STATUS
+            continue
         program_enrollment = program_enrollments_by_key.get(external_key)
         if not program_enrollment:
             results[external_key] = ProgramCourseOpStatuses.NOT_IN_PROGRAM
-            continue
-        if status not in ProgramCourseEnrollmentStatuses.__ALL__:
-            results[external_key] = ProgramCourseOpStatuses.INVALID_STATUS
             continue
         existing_course_enrollment = existing_course_enrollments_by_key[external_key]
         if existing_course_enrollment:

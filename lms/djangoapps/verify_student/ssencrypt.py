@@ -15,7 +15,7 @@ An RSA private key can be in any of the following formats:
 * PKCS#1 RSAPrivateKey DER SEQUENCE (binary or PEM encoding)
 * PKCS#8 PrivateKeyInfo DER SEQUENCE (binary or PEM encoding)
 """
-from __future__ import absolute_import, division
+
 
 import base64
 import binascii
@@ -176,10 +176,10 @@ def generate_signed_message(method, headers_dict, body_dict, access_key, secret_
 
     # hmac needs a byte string for it's starting key, can't be unicode.
     hashed = hmac.new(secret_key.encode('utf-8'), message.encode('utf-8'), sha256)
-    signature = binascii.b2a_base64(hashed.digest()).rstrip(b'\n')
+    signature = binascii.b2a_base64(hashed.digest()).rstrip(b'\n').decode('utf-8')
     authorization_header = u"SSI {}:{}".format(access_key, signature)
 
-    message += b'\n'
+    message += '\n'
     return message, signature, authorization_header
 
 
@@ -191,7 +191,7 @@ def signing_format_message(method, headers_dict, body_dict):
     """
     headers_str = "{}\n\n{}".format(method, header_string(headers_dict))
     body_str = body_string(body_dict)
-    message = six.b(headers_str) + body_str
+    message = headers_str + body_str
 
     return message
 
@@ -231,4 +231,4 @@ def body_string(body_dict, prefix=""):
                 value = "null"
             body_list.append(u"{}{}:{}\n".format(prefix, key, value))
 
-    return b"".join(body_list)  # Note that trailing \n's are important
+    return "".join(body_list)  # Note that trailing \n's are important

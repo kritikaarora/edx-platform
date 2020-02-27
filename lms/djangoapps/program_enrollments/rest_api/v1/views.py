@@ -2,7 +2,7 @@
 """
 ProgramEnrollment Views
 """
-from __future__ import absolute_import, unicode_literals
+
 
 from ccx_keys.locator import CCXLocator
 from django.conf import settings
@@ -20,7 +20,9 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from course_modes.models import CourseMode
+from lms.djangoapps.bulk_email.api import get_emails_enabled
 from lms.djangoapps.certificates.api import get_certificate_for_user
+from lms.djangoapps.course_api.api import get_course_run_url, get_due_dates
 from lms.djangoapps.program_enrollments.api import (
     fetch_program_course_enrollments,
     fetch_program_enrollments,
@@ -45,7 +47,7 @@ from openedx.core.djangoapps.catalog.utils import (
     normalize_program_type
 )
 from openedx.core.djangoapps.content.course_overviews.models import CourseOverview
-from openedx.core.lib.api.authentication import OAuth2AuthenticationAllowInactiveUser
+from openedx.core.lib.api.authentication import BearerAuthenticationAllowInactiveUser
 from openedx.core.lib.api.view_utils import DeveloperErrorViewMixin, PaginatedAPIView
 from student.helpers import get_resume_urls_for_enrollments
 from student.models import CourseEnrollment
@@ -67,9 +69,6 @@ from .utils import (
     ProgramEnrollmentPagination,
     ProgramSpecificViewMixin,
     get_course_run_status,
-    get_course_run_url,
-    get_due_dates,
-    get_emails_enabled,
     get_enrollment_http_code,
     verify_course_exists_and_in_program,
     verify_program_exists
@@ -193,7 +192,7 @@ class ProgramEnrollmentsView(
     Request body:
         * The request body will be a list of one or more students to enroll with the following schema:
             {
-                'status': A choice of the following statuses: ['enrolled', 'pending', 'canceled', 'suspended'],
+                'status': A choice of the following statuses: ['enrolled', 'pending', 'canceled', 'suspended', 'ended'],
                 student_key: string representation of a learner in partner systems,
                 'curriculum_uuid': string representation of a curriculum
             }
@@ -227,10 +226,12 @@ class ProgramEnrollmentsView(
                 * 'pending'
                 * 'canceled'
                 * 'suspended'
+                * 'ended'
             * failure statuses:
                 * 'duplicated' - the request body listed the same learner twice
                 * 'conflict' - there is an existing enrollment for that learner, curriculum and program combo
-                * 'invalid-status' - a status other than 'enrolled', 'pending', 'canceled', 'suspended' was entered
+                * 'invalid-status' - a status other than 'enrolled', 'pending', 'canceled', 'suspended',
+                  or 'ended' was entered
       * 200: OK - All students were successfully enrolled.
         * Example json response:
             {
@@ -261,7 +262,13 @@ class ProgramEnrollmentsView(
     Request body:
         * The request body will be a list of one or more students with their updated enrollment status:
             {
-                'status': A choice of the following statuses: ['enrolled', 'pending', 'canceled', 'suspended'],
+                'status': A choice of the following statuses: [
+                    'enrolled',
+                    'pending',
+                    'canceled',
+                    'suspended',
+                    'ended',
+                ],
                 student_key: string representation of a learner in partner systems
             }
         Example:
@@ -290,10 +297,12 @@ class ProgramEnrollmentsView(
                 * 'pending'
                 * 'canceled'
                 * 'suspended'
+                * 'ended'
             * failure statuses:
                 * 'duplicated' - the request body listed the same learner twice
                 * 'conflict' - there is an existing enrollment for that learner, curriculum and program combo
-                * 'invalid-status' - a status other than 'enrolled', 'pending', 'canceled', 'suspended' was entered
+                * 'invalid-status' - a status other than 'enrolled', 'pending', 'canceled', 'suspended', 'ended'
+                                     was entered
                 * 'not-in-program' - the user is not in the program and cannot be updated
       * 200: OK - All students were successfully enrolled.
         * Example json response:
@@ -319,7 +328,7 @@ class ProgramEnrollmentsView(
     """
     authentication_classes = (
         JwtAuthentication,
-        OAuth2AuthenticationAllowInactiveUser,
+        BearerAuthenticationAllowInactiveUser,
         SessionAuthenticationAllowInactiveUser,
     )
     permission_classes = (permissions.JWT_RESTRICTED_APPLICATION_OR_USER_ACCESS,)
@@ -463,7 +472,7 @@ class ProgramCourseEnrollmentsView(
     """
     authentication_classes = (
         JwtAuthentication,
-        OAuth2AuthenticationAllowInactiveUser,
+        BearerAuthenticationAllowInactiveUser,
         SessionAuthenticationAllowInactiveUser,
     )
     permission_classes = (permissions.JWT_RESTRICTED_APPLICATION_OR_USER_ACCESS,)
@@ -605,7 +614,7 @@ class ProgramCourseGradesView(
     """
     authentication_classes = (
         JwtAuthentication,
-        OAuth2AuthenticationAllowInactiveUser,
+        BearerAuthenticationAllowInactiveUser,
         SessionAuthenticationAllowInactiveUser,
     )
     permission_classes = (permissions.JWT_RESTRICTED_APPLICATION_OR_USER_ACCESS,)
@@ -686,7 +695,7 @@ class UserProgramReadOnlyAccessView(DeveloperErrorViewMixin, PaginatedAPIView):
     """
     authentication_classes = (
         JwtAuthentication,
-        OAuth2AuthenticationAllowInactiveUser,
+        BearerAuthenticationAllowInactiveUser,
         SessionAuthenticationAllowInactiveUser,
     )
     permission_classes = (IsAuthenticated,)
@@ -754,14 +763,14 @@ class UserProgramReadOnlyAccessView(DeveloperErrorViewMixin, PaginatedAPIView):
         This function would take a list of course runs the user is staff of, and then
         try to get the Masters program associated with each course_runs.
         """
-        program_list = []
+        program_dict = {}
         for course_key in self.get_course_keys_user_is_staff_for(user):
             course_run_programs = get_programs(course=course_key)
             for course_run_program in course_run_programs:
                 if course_run_program and course_run_program.get('type').lower() == program_type_filter:
-                    program_list.append(course_run_program)
+                    program_dict[course_run_program['uuid']] = course_run_program
 
-        return program_list
+        return program_dict.values()
 
 
 class ProgramCourseEnrollmentOverviewView(
@@ -865,7 +874,7 @@ class ProgramCourseEnrollmentOverviewView(
     """
     authentication_classes = (
         JwtAuthentication,
-        OAuth2AuthenticationAllowInactiveUser,
+        BearerAuthenticationAllowInactiveUser,
         SessionAuthenticationAllowInactiveUser,
     )
     permission_classes = (IsAuthenticated,)
@@ -891,7 +900,7 @@ class ProgramCourseEnrollmentOverviewView(
             is_active=True,
         )
 
-        overviews = CourseOverview.get_from_ids_if_exists(course_run_keys)
+        overviews = CourseOverview.get_from_ids(course_run_keys)
 
         course_run_resume_urls = get_resume_urls_for_enrollments(user, course_enrollments)
 
@@ -974,7 +983,7 @@ class EnrollmentDataResetView(APIView):
     """
     authentication_classes = (
         JwtAuthentication,
-        OAuth2AuthenticationAllowInactiveUser,
+        BearerAuthenticationAllowInactiveUser,
         SessionAuthenticationAllowInactiveUser,
     )
     permission_classes = (permissions.JWT_RESTRICTED_APPLICATION_OR_USER_ACCESS,)

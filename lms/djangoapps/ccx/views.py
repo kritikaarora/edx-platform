@@ -1,7 +1,7 @@
 """
 Views related to the Custom Courses feature.
 """
-from __future__ import absolute_import
+
 
 import csv
 import datetime
@@ -26,8 +26,7 @@ from django.views.decorators.cache import cache_control
 from django.views.decorators.csrf import ensure_csrf_cookie
 from opaque_keys.edx.keys import CourseKey
 
-from courseware.access import has_access
-from courseware.courses import get_course_by_id
+from lms.djangoapps.courseware.courses import get_course_by_id
 from edxmako.shortcuts import render_to_response
 from lms.djangoapps.ccx.models import CustomCourseForEdX
 from lms.djangoapps.ccx.overrides import (

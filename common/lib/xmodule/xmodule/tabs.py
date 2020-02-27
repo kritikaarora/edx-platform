@@ -1,7 +1,7 @@
 """
 Implement CourseTab
 """
-from __future__ import absolute_import
+
 
 import logging
 from abc import ABCMeta
@@ -413,6 +413,7 @@ class CourseTabList(List):
             discussion_tab,
             CourseTab.load('wiki'),
             CourseTab.load('progress'),
+            CourseTab.load('dates'),
         ])
 
     @staticmethod

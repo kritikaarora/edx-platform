@@ -1,7 +1,7 @@
 """
 Specific overrides to the base prod settings to make development easier.
 """
-from __future__ import absolute_import
+
 
 # Silence noisy logs
 import logging
@@ -67,7 +67,7 @@ DJFS = {
 ################################ DEBUG TOOLBAR ################################
 
 INSTALLED_APPS += ['debug_toolbar']
-MIDDLEWARE_CLASSES += [
+MIDDLEWARE += [
     'lms.djangoapps.discussion.django_comment_client.utils.QueryCountDebugMiddleware',
     'debug_toolbar.middleware.DebugToolbarMiddleware',
 ]
@@ -143,6 +143,7 @@ FEATURES['ENABLE_OAUTH2_PROVIDER'] = True
 OAUTH_OIDC_ISSUER = 'http://127.0.0.1:8000/oauth2'
 FEATURES['ENABLE_MOBILE_REST_API'] = True
 FEATURES['ENABLE_VIDEO_ABSTRACTION_LAYER_API'] = True
+ENABLE_DOP_ADAPTER = False
 
 ########################## SECURITY #######################
 FEATURES['ENABLE_MAX_FAILED_LOGIN_ATTEMPTS'] = False
@@ -290,3 +291,9 @@ if os.path.isfile(join(dirname(abspath(__file__)), 'private.py')):
 MODULESTORE = convert_module_store_setting_if_needed(MODULESTORE)
 
 SECRET_KEY = '85920908f28904ed733fe576320db18cabd7b6cd'
+
+EDXNOTES_INTERNAL_API = 'http://edx.devstack.edxnotesapi:18120/api/v1'
+EDXNOTES_CLIENT_NAME = 'edx_notes_api-backend-service'
+
+############## Settings for Microfrontends  #########################
+LEARNING_MICROFRONTEND_URL = 'http://localhost:2000'

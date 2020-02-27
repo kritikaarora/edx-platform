@@ -1,7 +1,7 @@
 """
 test views
 """
-from __future__ import absolute_import
+
 
 import datetime
 import json
@@ -23,11 +23,11 @@ from opaque_keys.edx.keys import CourseKey
 from pytz import UTC
 
 from capa.tests.response_xml_factory import StringResponseXMLFactory
-from courseware.courses import get_course_by_id
-from courseware.tabs import get_course_tab_list
-from courseware.tests.factories import StudentModuleFactory
-from courseware.tests.helpers import LoginEnrollmentTestCase
-from courseware.testutils import FieldOverrideTestMixin
+from lms.djangoapps.courseware.courses import get_course_by_id
+from lms.djangoapps.courseware.tabs import get_course_tab_list
+from lms.djangoapps.courseware.tests.factories import StudentModuleFactory
+from lms.djangoapps.courseware.tests.helpers import LoginEnrollmentTestCase
+from lms.djangoapps.courseware.testutils import FieldOverrideTestMixin
 from edxmako.shortcuts import render_to_response
 from lms.djangoapps.ccx.models import CustomCourseForEdX
 from lms.djangoapps.ccx.overrides import get_override_for_ccx, override_field_for_ccx
@@ -238,7 +238,7 @@ class TestCCXProgressChanges(CcxTestCase, LoginEnrollmentTestCase):
         self.assertEqual(progress_page_due_date, due)
 
     @patch('ccx.views.render_to_response', intercept_renderer)
-    @patch('courseware.views.views.render_to_response', intercept_renderer)
+    @patch('lms.djangoapps.courseware.views.views.render_to_response', intercept_renderer)
     @patch.dict('django.conf.settings.FEATURES', {'CUSTOM_COURSES_EDX': True})
     def test_edit_schedule(self):
         """
@@ -1114,10 +1114,10 @@ class TestCCXGrades(FieldOverrideTestMixin, SharedModuleStoreTestCase, LoginEnro
         self.assertEqual(data['HW 03'], '0.25')
         self.assertEqual(data['HW Avg'], '0.5')
 
-    @patch('courseware.views.views.render_to_response', intercept_renderer)
+    @patch('lms.djangoapps.courseware.views.views.render_to_response', intercept_renderer)
     def test_student_progress(self):
         self.course.enable_ccx = True
-        patch_context = patch('courseware.views.views.get_course_with_access')
+        patch_context = patch('lms.djangoapps.courseware.views.views.get_course_with_access')
         get_course = patch_context.start()
         get_course.return_value = self.course
         self.addCleanup(patch_context.stop)
@@ -1156,9 +1156,7 @@ class CCXCoachTabTestCase(CcxTestCase):
 
     def check_ccx_tab(self, course, user):
         """Helper function for verifying the ccx tab."""
-        request = RequestFactory().request()
-        request.user = user
-        all_tabs = get_course_tab_list(request, course)
+        all_tabs = get_course_tab_list(user, course)
         return any(tab.type == 'ccx_coach' for tab in all_tabs)
 
     @ddt.data(
@@ -1175,7 +1173,7 @@ class CCXCoachTabTestCase(CcxTestCase):
         """
         with self.settings(FEATURES={'CUSTOM_COURSES_EDX': ccx_feature_flag}):
             course = self.ccx_enabled_course if enable_ccx else self.ccx_disabled_course
-            self.assertEquals(
+            self.assertEqual(
                 expected_result,
                 self.check_ccx_tab(course, self.user)
             )

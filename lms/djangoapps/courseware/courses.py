@@ -2,7 +2,7 @@
 Functions for accessing and displaying courses within the
 courseware.
 """
-from __future__ import absolute_import
+
 
 import logging
 from collections import defaultdict
@@ -15,6 +15,9 @@ from django.conf import settings
 from django.db.models import Prefetch
 from django.http import Http404, QueryDict
 from django.urls import reverse
+from django.utils.translation import ugettext as _
+from edx_django_utils.monitoring import function_trace
+from edx_when.api import get_dates_for_course
 from fs.errors import ResourceNotFound
 from opaque_keys.edx.keys import UsageKey
 from path import Path as path
@@ -22,19 +25,21 @@ from six import text_type
 
 import branding
 from course_modes.models import CourseMode
-from courseware.access import has_access
-from courseware.access_response import MilestoneAccessError, StartDateError
-from courseware.date_summary import (
+from lms.djangoapps.courseware.access import has_access
+from lms.djangoapps.courseware.access_response import MilestoneAccessError, StartDateError
+from lms.djangoapps.courseware.date_summary import (
     CertificateAvailableDate,
+    CourseAssignmentDate,
     CourseEndDate,
+    CourseExpiredDate,
     CourseStartDate,
     TodaysDate,
     VerificationDeadlineDate,
     VerifiedUpgradeDeadlineDate
 )
-from courseware.masquerade import check_content_start_date_for_masquerade_user
-from courseware.model_data import FieldDataCache
-from courseware.module_render import get_module
+from lms.djangoapps.courseware.masquerade import check_content_start_date_for_masquerade_user
+from lms.djangoapps.courseware.model_data import FieldDataCache
+from lms.djangoapps.courseware.module_render import get_module
 from edxmako.shortcuts import render_to_string
 from lms.djangoapps.certificates import api as certs_api
 from lms.djangoapps.courseware.courseware_access_exception import CoursewareAccessException
@@ -44,7 +49,7 @@ from openedx.core.djangoapps.enrollments.api import get_course_enrollment_detail
 from openedx.core.djangoapps.site_configuration import helpers as configuration_helpers
 from openedx.core.lib.api.view_utils import LazySequence
 from openedx.features.course_duration_limits.access import AuditExpiredError
-from openedx.features.course_experience import COURSE_ENABLE_UNENROLLED_ACCESS_FLAG
+from openedx.features.course_experience import COURSE_ENABLE_UNENROLLED_ACCESS_FLAG, DATE_WIDGET_V2_FLAG
 from static_replace import replace_static_urls
 from student.models import CourseEnrollment
 from survey.utils import is_survey_required_and_unanswered
@@ -52,6 +57,8 @@ from util.date_utils import strftime_localized
 from xmodule.modulestore.django import modulestore
 from xmodule.modulestore.exceptions import ItemNotFoundError
 from xmodule.x_module import STUDENT_VIEW
+import lms.djangoapps.course_blocks.api as course_blocks_api
+from openedx.features.content_type_gating.helpers import CONTENT_GATING_PARTITION_ID
 
 log = logging.getLogger(__name__)
 
@@ -389,7 +396,8 @@ def get_course_info_section(request, user, course, section_key):
     return html
 
 
-def get_course_date_blocks(course, user):
+def get_course_date_blocks(course, user, request=None, include_access=False,
+                           include_past_dates=False, num_assignments=None):
     """
     Return the list of blocks to display on the course info page,
     sorted by date.
@@ -404,17 +412,78 @@ def get_course_date_blocks(course, user):
     if certs_api.get_active_web_certificate(course):
         block_classes.insert(0, CertificateAvailableDate)
 
-    blocks = (cls(course, user) for cls in block_classes)
+    blocks = [cls(course, user) for cls in block_classes]
+    if DATE_WIDGET_V2_FLAG.is_enabled(course.id):
+        blocks.append(CourseExpiredDate(course, user))
+        blocks.extend(get_course_assignment_due_dates(
+            course, user, request, num_return=num_assignments,
+            include_access=include_access, include_past_dates=include_past_dates,
+        ))
 
-    def block_key_fn(block):
-        """
-        If the block's date is None, return the maximum datetime in order
-        to force it to the end of the list of displayed blocks.
-        """
-        if block.date is None:
-            return datetime.max.replace(tzinfo=pytz.UTC)
-        return block.date
-    return sorted((b for b in blocks if b.is_enabled), key=block_key_fn)
+    return sorted((b for b in blocks if b.date and (b.is_enabled or include_past_dates)), key=date_block_key_fn)
+
+
+def date_block_key_fn(block):
+    """
+    If the block's date is None, return the maximum datetime in order
+    to force it to the end of the list of displayed blocks.
+    """
+    return block.date or datetime.max.replace(tzinfo=pytz.UTC)
+
+
+def get_course_assignment_due_dates(course, user, request, num_return=None,
+                                    include_past_dates=False, include_access=False):
+    """
+    Returns a list of assignment (at the subsection/sequential level) due date
+    blocks for the given course. Will return num_return results or all results
+    if num_return is None in date increasing order.
+    """
+    store = modulestore()
+    all_course_dates = get_dates_for_course(course.id, user)
+    date_blocks = []
+    for (block_key, date_type), date in all_course_dates.items():
+        if date_type == 'due' and block_key.block_type == 'sequential':
+            try:
+                item = store.get_item(block_key)
+            except ItemNotFoundError:
+                continue
+            if item.graded:
+                date_block = CourseAssignmentDate(course, user)
+                date_block.date = date
+
+                if include_access:
+                    date_block.requires_full_access = _requires_full_access(store, user, block_key)
+
+                block_url = None
+                now = datetime.now().replace(tzinfo=pytz.UTC)
+                assignment_released = item.start < now if item.start else None
+                if assignment_released:
+                    block_url = reverse('jump_to', args=[course.id, block_key])
+                    block_url = request.build_absolute_uri(block_url) if request else None
+                assignment_title = item.display_name if item.display_name else _('Assignment')
+                date_block.set_title(assignment_title, link=block_url)
+
+                date_blocks.append(date_block)
+    date_blocks = sorted((b for b in date_blocks if b.is_enabled or include_past_dates), key=date_block_key_fn)
+    if num_return:
+        return date_blocks[:num_return]
+    return date_blocks
+
+
+def _requires_full_access(store, user, block_key):
+    """
+    Returns a boolean if any child of the block_key specified has a group_access array consisting of just full_access
+    """
+    child_block_keys = course_blocks_api.get_course_blocks(user, block_key)
+    for child_block_key in child_block_keys:
+        child_block = store.get_item(child_block_key)
+        # If group_access is set on the block, and the content gating is
+        # only full access, set the value on the CourseAssignmentDate object
+        if(child_block.group_access and child_block.group_access.get(CONTENT_GATING_PARTITION_ID) == [
+            settings.CONTENT_TYPE_GATE_GROUP_IDS['full_access']
+        ]):
+            return True
+    return False
 
 
 # TODO: Fix this such that these are pulled in as extra course-specific tabs.
@@ -457,6 +526,7 @@ def get_course_syllabus_section(course, section_key):
     raise KeyError("Invalid about key " + str(section_key))
 
 
+@function_trace('get_courses')
 def get_courses(user, org=None, filter_=None):
     """
     Return a LazySequence of courses available, optionally filtered by org code (case-insensitive).

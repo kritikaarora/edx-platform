@@ -2,19 +2,29 @@
 This module is essentially a broker to xmodule/tabs.py -- it was originally introduced to
 perform some LMS-specific tab display gymnastics for the Entrance Exams feature
 """
-from __future__ import absolute_import
+
 
 import six
 from django.conf import settings
 from django.utils.translation import ugettext as _
 from django.utils.translation import ugettext_noop
 
-from courseware.access import has_access
-from courseware.entrance_exams import user_can_skip_entrance_exam
+from lms.djangoapps.courseware.access import has_access
+from lms.djangoapps.courseware.entrance_exams import user_can_skip_entrance_exam
+from openedx.core.djangoapps.content.course_overviews.models import CourseOverview
+from openedx.core.djangoapps.waffle_utils import CourseWaffleFlag, WaffleFlagNamespace
 from openedx.core.lib.course_tabs import CourseTabPluginManager
 from openedx.features.course_experience import UNIFIED_COURSE_TAB_FLAG, default_course_url_name
 from student.models import CourseEnrollment
 from xmodule.tabs import CourseTab, CourseTabList, course_reverse_func_from_name_func, key_checker
+
+COURSEWARE_TABS_NAMESPACE = WaffleFlagNamespace(name=u'courseware_tabs')
+
+ENABLE_DATES_TAB = CourseWaffleFlag(
+    waffle_namespace=COURSEWARE_TABS_NAMESPACE,
+    flag_name="enable_dates_tab",
+    flag_undefined_default=False
+)
 
 
 class EnrolledTab(CourseTab):
@@ -307,11 +317,29 @@ class SingleTextbookTab(CourseTab):
         raise NotImplementedError('SingleTextbookTab should not be serialized.')
 
 
-def get_course_tab_list(request, course):
+class DatesTab(CourseTab):
+    """
+    A tab representing the relevant dates for a course.
+    """
+    type = "dates"
+    title = ugettext_noop(
+        "Dates")  # We don't have the user in this context, so we don't want to translate it at this level.
+    view_name = "dates"
+    is_dynamic = True
+
+    @classmethod
+    def is_enabled(cls, course, user=None):
+        """Returns true if this tab is enabled."""
+        # We want to only limit this feature to instructor led courses for now
+        if ENABLE_DATES_TAB.is_enabled(course.id):
+            return not CourseOverview.get_from_id(course.id).self_paced
+        return False
+
+
+def get_course_tab_list(user, course):
     """
     Retrieves the course tab list from xmodule.tabs and manipulates the set as necessary
     """
-    user = request.user
     xmodule_tab_list = CourseTabList.iterate_displayable(course, user=user)
 
     # Now that we've loaded the tabs for this course, perform the Entrance Exam work.

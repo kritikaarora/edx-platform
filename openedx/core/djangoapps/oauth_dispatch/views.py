@@ -3,18 +3,18 @@ Views that dispatch processing of OAuth requests to django-oauth2-provider or
 django-oauth-toolkit as appropriate.
 """
 
-from __future__ import absolute_import, unicode_literals
 
 import json
 
 from django.conf import settings
+from django.utils.decorators import method_decorator
 from django.views.generic import View
 from edx_django_utils import monitoring as monitoring_utils
 from edx_oauth2_provider import views as dop_views  # django-oauth2-provider views
 from oauth2_provider import models as dot_models  # django-oauth-toolkit
 from oauth2_provider import views as dot_views
 from ratelimit import ALL
-from ratelimit.mixins import RatelimitMixin
+from ratelimit.decorators import ratelimit
 
 from openedx.core.djangoapps.auth_exchange import views as auth_exchange_views
 from openedx.core.djangoapps.oauth_dispatch import adapters
@@ -39,7 +39,7 @@ class _DispatchingView(View):
         client_id = self._get_client_id(request)
         monitoring_utils.set_custom_metric('oauth_client_id', client_id)
 
-        if dot_models.Application.objects.filter(client_id=client_id).exists():
+        if dot_models.Application.objects.filter(client_id=client_id).exists() or not settings.ENABLE_DOP_ADAPTER:
             monitoring_utils.set_custom_metric('oauth_adapter', 'dot')
             return self.dot_adapter
         else:
@@ -69,8 +69,10 @@ class _DispatchingView(View):
         Return the appropriate view from the requested backend.
         """
         if backend == self.dot_adapter.backend:
+            monitoring_utils.set_custom_metric('oauth_view', 'dot')
             return self.dot_view.as_view()
         elif backend == self.dop_adapter.backend:
+            monitoring_utils.set_custom_metric('oauth_view', 'dop')
             return self.dop_view.as_view()
         else:
             raise KeyError('Failed to dispatch view. Invalid backend {}'.format(backend))
@@ -85,21 +87,24 @@ class _DispatchingView(View):
             return request.POST.get('client_id')
 
 
-class AccessTokenView(RatelimitMixin, _DispatchingView):
+@method_decorator(
+    ratelimit(
+        key='openedx.core.djangoapps.util.ratelimit.real_ip', rate=settings.RATELIMIT_RATE,
+        method=ALL, block=True
+    ), name='dispatch'
+)
+class AccessTokenView(_DispatchingView):
     """
     Handle access token requests.
     """
     dot_view = dot_views.TokenView
     dop_view = dop_views.AccessTokenView
-    ratelimit_key = 'openedx.core.djangoapps.util.ratelimit.real_ip'
-    ratelimit_rate = settings.RATELIMIT_RATE
-    ratelimit_block = True
-    ratelimit_method = ALL
 
     def dispatch(self, request, *args, **kwargs):
         response = super(AccessTokenView, self).dispatch(request, *args, **kwargs)
 
-        token_type = request.POST.get('token_type', 'no_token_type_supplied').lower()
+        token_type = request.POST.get('token_type',
+                                      request.META.get('HTTP_X_TOKEN_TYPE', 'no_token_type_supplied')).lower()
         monitoring_utils.set_custom_metric('oauth_token_type', token_type)
         monitoring_utils.set_custom_metric('oauth_grant_type', request.POST.get('grant_type', ''))
 
@@ -131,8 +136,20 @@ class AccessTokenExchangeView(_DispatchingView):
     """
     Exchange a third party auth token.
     """
-    dop_view = auth_exchange_views.DOPAccessTokenExchangeView
     dot_view = auth_exchange_views.DOTAccessTokenExchangeView
+
+    def get_view_for_backend(self, backend):
+        """
+        Return the appropriate view from the requested backend.
+        Since AccessTokenExchangeView no longer supports dop, this function needed to
+        be overwritten from _DispatchingView, it was decided that the dop path should not be removed
+        from _DispatchingView due to it still being used in other views(AuthorizationView, AccessTokenView)
+        """
+        if backend == self.dot_adapter.backend:
+            monitoring_utils.set_custom_metric('oauth_view', 'dot')
+            return self.dot_view.as_view()
+        else:
+            raise KeyError('Failed to dispatch view. Invalid backend {}'.format(backend))
 
 
 class RevokeTokenView(_DispatchingView):

@@ -1,7 +1,7 @@
 """
 Django models for site configurations.
 """
-from __future__ import absolute_import
+
 
 import collections
 from logging import getLogger
@@ -10,12 +10,14 @@ from django.contrib.sites.models import Site
 from django.db import models
 from django.db.models.signals import post_save
 from django.dispatch import receiver
+from django.utils.encoding import python_2_unicode_compatible
 from jsonfield.fields import JSONField
 from model_utils.models import TimeStampedModel
 
 logger = getLogger(__name__)  # pylint: disable=invalid-name
 
 
+@python_2_unicode_compatible
 class SiteConfiguration(models.Model):
     """
     Model for storing site configuration. These configuration override OpenEdx configurations and settings.
@@ -23,23 +25,34 @@ class SiteConfiguration(models.Model):
 
     Fields:
         site (OneToOneField): one to one field relating each configuration to a single site
-        values (JSONField):  json field to store configurations for a site
+        site_values (JSONField):  json field to store configurations for a site
 
     .. no_pii:
     """
     site = models.OneToOneField(Site, related_name='configuration', on_delete=models.CASCADE)
-    enabled = models.BooleanField(default=False, verbose_name="Enabled")
+    enabled = models.BooleanField(default=False, verbose_name=u"Enabled")
+    site_values = JSONField(
+        null=False,
+        blank=True,
+        # The actual default value is determined by calling the given callable.
+        # Therefore, the default here is just {}, since that is the result of
+        # calling `dict`.
+        default=dict,
+        load_kwargs={'object_pairs_hook': collections.OrderedDict}
+    )
+    # TODO: Delete this deprecated field during the later stages of the rollout
+    # which renames 'values' to 'site_values'.
     values = JSONField(
         null=False,
         blank=True,
         load_kwargs={'object_pairs_hook': collections.OrderedDict}
     )
 
-    def __unicode__(self):
+    def __str__(self):
         return u"<SiteConfiguration: {site} >".format(site=self.site)  # xss-lint: disable=python-wrap-html
 
     def __repr__(self):
-        return self.__unicode__()
+        return self.__str__()
 
     def get_value(self, name, default=None):
         """
@@ -136,6 +149,7 @@ class SiteConfiguration(models.Model):
         return org in cls.get_all_orgs()
 
 
+@python_2_unicode_compatible
 class SiteConfigurationHistory(TimeStampedModel):
     """
     This is an archive table for SiteConfiguration, so that we can maintain a history of
@@ -143,12 +157,19 @@ class SiteConfigurationHistory(TimeStampedModel):
 
     Fields:
         site (ForeignKey): foreign-key to django Site
-        values (JSONField): json field to store configurations for a site
+        site_values (JSONField): json field to store configurations for a site
 
     .. no_pii:
     """
     site = models.ForeignKey(Site, related_name='configuration_histories', on_delete=models.CASCADE)
-    enabled = models.BooleanField(default=False, verbose_name="Enabled")
+    enabled = models.BooleanField(default=False, verbose_name=u"Enabled")
+    site_values = JSONField(
+        null=False,
+        blank=True,
+        load_kwargs={'object_pairs_hook': collections.OrderedDict}
+    )
+    # TODO: Delete this deprecated field during the later stages of the rollout
+    # which renames 'values' to 'site_values'.
     values = JSONField(
         null=False,
         blank=True,
@@ -159,7 +180,7 @@ class SiteConfigurationHistory(TimeStampedModel):
         get_latest_by = 'modified'
         ordering = ('-modified', '-created',)
 
-    def __unicode__(self):
+    def __str__(self):
         # pylint: disable=line-too-long
         return u"<SiteConfigurationHistory: {site}, Last Modified: {modified} >".format(  # xss-lint: disable=python-wrap-html
             modified=self.modified,
@@ -167,7 +188,7 @@ class SiteConfigurationHistory(TimeStampedModel):
         )
 
     def __repr__(self):
-        return self.__unicode__()
+        return self.__str__()
 
 
 @receiver(post_save, sender=SiteConfiguration)
@@ -182,6 +203,7 @@ def update_site_configuration_history(sender, instance, **kwargs):  # pylint: di
     """
     SiteConfigurationHistory.objects.create(
         site=instance.site,
+        site_values=instance.values,
         values=instance.values,
         enabled=instance.enabled,
     )

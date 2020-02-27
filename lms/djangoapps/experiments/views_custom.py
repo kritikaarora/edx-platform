@@ -4,7 +4,7 @@ The Discount API Views should return information about discounts that apply to t
 """
 # -*- coding: utf-8 -*-
 
-from __future__ import absolute_import
+
 import six
 
 from django.utils.decorators import method_decorator
@@ -19,11 +19,11 @@ from rest_framework.views import APIView
 from openedx.core.djangoapps.content.course_overviews.models import CourseOverview
 from openedx.core.djangoapps.cors_csrf.decorators import ensure_csrf_cookie_cross_domain
 from openedx.core.djangoapps.waffle_utils import WaffleFlag, WaffleFlagNamespace
-from openedx.core.lib.api.authentication import OAuth2AuthenticationAllowInactiveUser
+from openedx.core.lib.api.authentication import BearerAuthenticationAllowInactiveUser
 from openedx.core.lib.api.permissions import ApiKeyHeaderPermissionIsAuthenticated
 from openedx.core.lib.api.view_utils import DeveloperErrorViewMixin
 
-from lms.djangoapps.courseware.date_summary import verified_upgrade_link_is_valid
+from lms.djangoapps.courseware.utils import verified_upgrade_link_is_valid
 from course_modes.models import get_cosmetic_verified_display_price
 from lms.djangoapps.commerce.utils import EcommerceService
 from lms.djangoapps.experiments.stable_bucketing import stable_bucketing_hash_group
@@ -100,7 +100,7 @@ class Rev934(DeveloperErrorViewMixin, APIView):
 
     authentication_classes = (
         JwtAuthentication,
-        OAuth2AuthenticationAllowInactiveUser,
+        BearerAuthenticationAllowInactiveUser,
         SessionAuthenticationAllowInactiveUser,
     )
     permission_classes = (ApiKeyHeaderPermissionIsAuthenticated,)
@@ -123,8 +123,14 @@ class Rev934(DeveloperErrorViewMixin, APIView):
             return HttpResponseBadRequest("Missing or invalid course_id")
 
         course = CourseOverview.get_from_id(course_key)
-        user = request.user
+        if not course.has_started() or course.has_ended():
+            return Response({
+                'show_upsell': False,
+                'upsell_flag': MOBILE_UPSELL_FLAG.is_enabled(),
+                'course_running': False,
+            })
 
+        user = request.user
         try:
             enrollment = CourseEnrollment.objects.select_related(
                 'course'
@@ -133,9 +139,9 @@ class Rev934(DeveloperErrorViewMixin, APIView):
         except CourseEnrollment.DoesNotExist:
             user_upsell = True
 
-        basket_link = EcommerceService().upgrade_url(user, course.id)
+        basket_url = EcommerceService().upgrade_url(user, course.id)
         upgrade_price = six.text_type(get_cosmetic_verified_display_price(course))
-        could_upsell = bool(user_upsell and basket_link)
+        could_upsell = bool(user_upsell and basket_url)
 
         bucket = stable_bucketing_hash_group(MOBILE_UPSELL_EXPERIMENT, 2, user.username)
 
@@ -160,7 +166,7 @@ class Rev934(DeveloperErrorViewMixin, APIView):
             return Response({
                 'show_upsell': show_upsell,
                 'price': upgrade_price,
-                'basket_url': basket_link,
+                'basket_url': basket_url,
             })
         else:
             return Response({
@@ -168,5 +174,5 @@ class Rev934(DeveloperErrorViewMixin, APIView):
                 'upsell_flag': MOBILE_UPSELL_FLAG.is_enabled(),
                 'experiment_bucket': bucket,
                 'user_upsell': user_upsell,
-                'basket_link': basket_link,
+                'basket_url': basket_url,
             })

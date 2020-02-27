@@ -57,7 +57,6 @@ rather than spreading them across two functions in the pipeline.
 See https://python-social-auth.readthedocs.io/en/latest/pipeline.html for more docs.
 """
 
-from __future__ import absolute_import
 
 import base64
 import hashlib
@@ -84,6 +83,7 @@ from social_core.pipeline import partial
 from social_core.pipeline.social_auth import associate_by_email
 from social_core.utils import module_member, slugify
 
+import third_party_auth
 from edxmako.shortcuts import render_to_string
 from lms.djangoapps.verify_student.models import SSOVerification
 from lms.djangoapps.verify_student.utils import earliest_allowed_verification_date
@@ -209,11 +209,31 @@ def get(request):
     """Gets the running pipeline's data from the passed request."""
     strategy = social_django.utils.load_strategy(request)
     token = strategy.session_get('partial_pipeline_token')
+
+    if not token:
+        strategy.session_set('partial_pipeline_token', strategy.session_get('partial_pipeline_token_'))
+        token = strategy.session_get('partial_pipeline_token')
+
     partial_object = strategy.partial_load(token)
     pipeline_data = None
     if partial_object:
         pipeline_data = {'kwargs': partial_object.kwargs, 'backend': partial_object.backend}
     return pipeline_data
+
+
+def get_idp_logout_url_from_running_pipeline(request):
+    """
+    Returns: IdP's logout url associated with running pipeline
+    """
+    if third_party_auth.is_enabled():
+        running_pipeline = get(request)
+        if running_pipeline:
+            tpa_provider = provider.Registry.get_from_pipeline(running_pipeline)
+            if tpa_provider:
+                try:
+                    return tpa_provider.get_setting('logout_url')
+                except KeyError:
+                    logger.info(u'[THIRD_PARTY_AUTH] idP [%s] logout_url setting not defined', tpa_provider.name)
 
 
 def get_real_social_auth_object(request):
@@ -560,6 +580,10 @@ def ensure_user_information(strategy, auth_entry, backend=None, user=None, socia
         return (current_provider and
                 current_provider.slug in [saml_provider.slug for saml_provider in saml_providers_list])
 
+    if current_partial:
+        strategy.session_set('partial_pipeline_token_', current_partial.token)
+        strategy.storage.partial.store(current_partial)
+
     if not user:
         # Use only email for user existence check in case of saml provider
         if is_provider_saml():
@@ -816,13 +840,15 @@ def set_id_verification_status(auth_entry, strategy, details, user=None, *args, 
 
         # If there is none, create a new approved verification for the user.
         if not verifications:
-            SSOVerification.objects.create(
+            verification = SSOVerification.objects.create(
                 user=user,
                 status="approved",
                 name=user.profile.name,
                 identity_provider_type=current_provider.full_class_name,
                 identity_provider_slug=current_provider.slug,
             )
+            # Send a signal so users who have already passed their courses receive credit
+            verification.send_approval_signal(current_provider.slug)
 
 
 def get_username(strategy, details, backend, user=None, *args, **kwargs):

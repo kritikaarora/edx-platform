@@ -1,7 +1,7 @@
 """
 Unit tests for ProgramEnrollment views.
 """
-from __future__ import absolute_import, unicode_literals
+
 
 import json
 from collections import defaultdict
@@ -448,8 +448,6 @@ class ProgramEnrollmentsPostTests(ProgramEnrollmentsWriteMixin, APITestCase):
     """
     add_uuid = True
 
-    view_name = 'programs_api:v1:program_enrollments'
-
     def setUp(self):
         super(ProgramEnrollmentsPostTests, self).setUp()
         self.request = self.client.post
@@ -460,9 +458,9 @@ class ProgramEnrollmentsPostTests(ProgramEnrollmentsWriteMixin, APITestCase):
         ProgramEnrollment.objects.all().delete()
 
     def test_successful_program_enrollments_no_existing_user(self):
-        statuses = ['pending', 'enrolled', 'pending']
-        external_user_keys = ['abc1', 'efg2', 'hij3']
-        curriculum_uuids = [self.curriculum_uuid, self.curriculum_uuid, uuid4()]
+        statuses = ['pending', 'enrolled', 'pending', 'ended']
+        external_user_keys = ['abc1', 'efg2', 'hij3', 'klm4']
+        curriculum_uuids = [self.curriculum_uuid, self.curriculum_uuid, uuid4(), uuid4()]
         post_data = [
             {
                 REQUEST_STUDENT_KEY: e,
@@ -478,7 +476,7 @@ class ProgramEnrollmentsPostTests(ProgramEnrollmentsWriteMixin, APITestCase):
 
         self.assertEqual(response.status_code, 200)
 
-        for i in range(3):
+        for i in range(4):
             enrollment = ProgramEnrollment.objects.get(external_user_key=external_user_keys[i])
 
             self.assertEqual(enrollment.external_user_key, external_user_keys[i])
@@ -1427,18 +1425,52 @@ class UserProgramReadOnlyAccessGetTests(EnrollmentsDataMixin, APITestCase):
         assert len(response.data) == 1
         mock_get_programs.assert_called_once_with(course=self.course_id)
 
-    def test_course_staff_of_multiple_courses(self):
-        other_course_key = CourseKey.from_string('course-v1:edX+ToyX+Other_Course')
+    @ddt.data(
+        (
+            ['garbage-program'],
+            ['garbage-life']
+        ),
+        (
+            ['garbage-program', 'garbage-life'],
+            ['garbage-program', 'garbage-life']
+        )
+    )
+    @ddt.unpack
+    def test_course_staff_of_multiple_courses(
+        self,
+        program_slugs_to_return_first,
+        program_slugs_to_return_second
+    ):
+        def find_program_by_marketing_slug(slug, program_list):
+            for program in program_list:
+                if program['marketing_slug'] == slug:
+                    return program
+            return None
 
+        other_course_key = CourseKey.from_string('course-v1:edX+ToyX+Other_Course')
+        CourseOverviewFactory(id=other_course_key)
+        CourseRunFactory.create(key=text_type(other_course_key))
         CourseEnrollmentFactory.create(course_id=other_course_key, user=self.course_staff)
         CourseStaffRole(other_course_key).add_users(self.course_staff)
-
         self.client.login(username=self.course_staff.username, password=self.password)
+
+        programs_to_return_first = [
+            find_program_by_marketing_slug(
+                p_slug,
+                self.mock_program_data
+            ) for p_slug in program_slugs_to_return_first
+        ]
+        programs_to_return_second = [
+            find_program_by_marketing_slug(
+                p_slug,
+                self.mock_program_data
+            ) for p_slug in program_slugs_to_return_second
+        ]
 
         with mock.patch(
             _VIEW_PATCH_FORMAT.format('get_programs'),
             autospec=True,
-            side_effect=[[self.mock_program_data[0]], [self.mock_program_data[2]]]
+            side_effect=[programs_to_return_first, programs_to_return_second]
         ) as mock_get_programs:
             response = self.client.get(reverse(self.view_name) + '?type=masters')
 
@@ -1735,7 +1767,7 @@ class ProgramCourseEnrollmentOverviewGetTests(
             display_name='unit_1'
         )
 
-        mock_path = _REST_API_PATCH_FORMAT.format('utils.get_dates_for_course')
+        mock_path = 'lms.djangoapps.course_api.api.get_dates_for_course'
         with mock.patch(mock_path) as mock_get_dates:
             mock_get_dates.return_value = {
                 (section_1.location, 'due'): section_1.due,

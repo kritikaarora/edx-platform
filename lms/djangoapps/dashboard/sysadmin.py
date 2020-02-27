@@ -2,7 +2,7 @@
 This module creates a sysadmin dashboard for managing and viewing
 courses.
 """
-from __future__ import absolute_import
+
 
 import json
 import logging
@@ -31,7 +31,7 @@ from six import text_type
 
 import dashboard.git_import as git_import
 import track.views
-from courseware.courses import get_course_by_id
+from lms.djangoapps.courseware.courses import get_course_by_id
 from dashboard.git_import import GitImportError
 from dashboard.models import CourseImportLog
 from edxmako.shortcuts import render_to_response
@@ -553,7 +553,7 @@ class GitLogs(TemplateView):
             page = min(max(1, given_page), paginator.num_pages)
             logs = paginator.page(page)
 
-        mdb.disconnect()
+        mdb.close()
         context = {
             'logs': logs,
             'course_id': text_type(course_id) if course_id else None,

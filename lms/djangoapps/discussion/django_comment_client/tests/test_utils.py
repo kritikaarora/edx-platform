@@ -1,6 +1,6 @@
 # pylint: skip-file
 # -*- coding: utf-8 -*-
-from __future__ import absolute_import
+
 
 import datetime
 import json
@@ -18,8 +18,8 @@ from six import text_type
 import lms.djangoapps.discussion.django_comment_client.utils as utils
 from course_modes.models import CourseMode
 from course_modes.tests.factories import CourseModeFactory
-from courseware.tabs import get_course_tab_list
-from courseware.tests.factories import InstructorFactory
+from lms.djangoapps.courseware.tabs import get_course_tab_list
+from lms.djangoapps.courseware.tests.factories import InstructorFactory
 from lms.djangoapps.discussion.django_comment_client.constants import TYPE_ENTRY, TYPE_SUBCATEGORY
 from lms.djangoapps.discussion.django_comment_client.tests.factories import RoleFactory
 from lms.djangoapps.discussion.django_comment_client.tests.unicode import UnicodeTestMixin
@@ -1248,8 +1248,7 @@ class DiscussionTabTestCase(ModuleStoreTestCase):
     def discussion_tab_present(self, user):
         """ Returns true if the user has access to the discussion tab. """
         request = RequestFactory().request()
-        request.user = user
-        all_tabs = get_course_tab_list(request, self.course)
+        all_tabs = get_course_tab_list(user, self.course)
         return any(tab.type == 'discussion' for tab in all_tabs)
 
     def test_tab_access(self):
