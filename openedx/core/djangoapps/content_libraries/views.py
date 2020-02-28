@@ -21,6 +21,8 @@ from .serializers import (
     LibraryXBlockCreationSerializer,
     LibraryXBlockMetadataSerializer,
     LibraryXBlockTypeSerializer,
+    LibraryBundleLinkSerializer,
+    LibraryBundleLinkUpdateSerializer,
     LibraryXBlockOlxSerializer,
     LibraryXBlockStaticFileSerializer,
     LibraryXBlockStaticFilesSerializer,
@@ -141,6 +143,75 @@ class LibraryBlockTypesView(APIView):
         key = LibraryLocatorV2.from_string(lib_key_str)
         result = api.get_allowed_block_types(key)
         return Response(LibraryXBlockTypeSerializer(result, many=True).data)
+
+
+@view_auth_classes()
+class LibraryLinksView(APIView):
+    """
+    View to get the list of bundles/libraries linked to this content library.
+
+    Because every content library is a blockstore bundle, it can have "links" to
+    other bundles, which may or may not be content libraries. This allows using
+    XBlocks (or perhaps even static assets etc.) from another bundle without
+    needing to duplicate/copy the data.
+
+    Links always point to a specific published version of the target bundle.
+    Links are identified by a slug-like ID, e.g. "link1"
+    """
+    @convert_exceptions
+    def get(self, request, lib_key_str):
+        """
+        Get the list of bundles that this library links to, if any
+        """
+        key = LibraryLocatorV2.from_string(lib_key_str)
+        result = api.get_bundle_links(key)
+        return Response(LibraryBundleLinkSerializer(result, many=True).data)
+
+    @convert_exceptions
+    def post(self, request, lib_key_str):
+        """
+        Create a new link in this library.
+        """
+        key = LibraryLocatorV2.from_string(lib_key_str)
+        serializer = LibraryBundleLinkSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        api.create_bundle_link(
+            library_key=key,
+            link_id=serializer.validated_data['id'],
+            target_opaque_key=serializer.validated_data['opaque_key'],
+            version=serializer.validated_data['version'],  # a number, or None for "use latest version"
+        )
+        return Response({})
+
+
+@view_auth_classes()
+class LibraryLinkDetailView(APIView):
+    """
+    View to update/delete an existing library link
+    """
+    @convert_exceptions
+    def patch(self, request, lib_key_str, link_id):
+        """
+        Update the specified link to point to a different version of its
+        target bundle.
+
+        Pass e.g. {"version": 40} or pass {"version": None} to update to the
+        latest published version.
+        """
+        key = LibraryLocatorV2.from_string(lib_key_str)
+        serializer = LibraryBundleLinkUpdateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        api.update_bundle_link(key, link_id, version=serializer.validated_data['version'])
+        return Response({})
+
+    @convert_exceptions
+    def delete(self, request, lib_key_str, link_id):  # pylint: disable=unused-argument
+        """
+        Delete a link from this library.
+        """
+        key = LibraryLocatorV2.from_string(lib_key_str)
+        api.update_bundle_link(key, link_id, delete=True)
+        return Response({})
 
 
 @view_auth_classes()
