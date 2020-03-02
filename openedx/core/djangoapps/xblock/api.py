@@ -89,6 +89,7 @@ def get_block_metadata(block):
     Get metadata about the specified XBlock
     """
     return {
+        "index_dictionary": block.index_dictionary(),
         "block_id": six.text_type(block.scope_ids.usage_id),
         "block_type": block.scope_ids.block_type,
         "display_name": get_block_display_name(block),
