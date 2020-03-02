@@ -29,6 +29,7 @@ URL_LIB_BLOCK_ASSET_FILE = URL_LIB_BLOCK + 'assets/{file_name}'  # Get, delete, 
 
 URL_BLOCK_RENDER_VIEW = '/api/xblock/v2/xblocks/{block_key}/view/{view_name}/'
 URL_BLOCK_GET_HANDLER_URL = '/api/xblock/v2/xblocks/{block_key}/handler_url/{handler_name}/'
+URL_BLOCK_METADATA_URL = '/api/xblock/v2/xblocks/{block_key}/'
 
 
 # Decorator for tests that require blockstore

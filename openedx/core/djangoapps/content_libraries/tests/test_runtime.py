@@ -17,6 +17,7 @@ from openedx.core.djangoapps.content_libraries.tests.base import (
     requires_blockstore,
     URL_BLOCK_RENDER_VIEW,
     URL_BLOCK_GET_HANDLER_URL,
+    URL_BLOCK_METADATA_URL,
 )
 from openedx.core.djangoapps.content_libraries.tests.user_state_block import UserStateTestBlock
 from openedx.core.djangoapps.xblock import api as xblock_api
@@ -336,6 +337,25 @@ class ContentLibraryXBlockUserStateTest(ContentLibraryContentTestMixin, TestCase
         student_view_result = client.get(URL_BLOCK_RENDER_VIEW.format(block_key=block_id, view_name='student_view'))
         problem_key = "input_{}_2_1".format(block_id)
         self.assertIn(problem_key, student_view_result.data["content"])
+
+        # Now view the metadata through the api
+        metadata_view_result = client.get(URL_BLOCK_METADATA_URL.format(block_key=block_id))
+        self.assertEqual(block_id, metadata_view_result.data["block_id"])
+        self.assertNotIn("index_dictionary", metadata_view_result.data)
+        self.assertNotIn("student_view_data", metadata_view_result.data)
+
+        metadata_view_result = client.get(URL_BLOCK_METADATA_URL.format(block_key=block_id), {"include": "index_dictionary"})
+        self.assertIn("index_dictionary", metadata_view_result.data)
+        self.assertNotIn("student_view_data", metadata_view_result.data)
+
+        metadata_view_result = client.get(URL_BLOCK_METADATA_URL.format(block_key=block_id), {"include": "student_view_data"})
+        self.assertNotIn("index_dictionary", metadata_view_result.data)
+        self.assertIn("student_view_data", metadata_view_result.data)
+
+        metadata_view_result = client.get(URL_BLOCK_METADATA_URL.format(block_key=block_id), {"include": "student_view_data,index_dictionary"})
+        self.assertIn("index_dictionary", metadata_view_result.data)
+        self.assertIn("student_view_data", metadata_view_result.data)
+
         # And submit a wrong answer:
         result = client.get(URL_BLOCK_GET_HANDLER_URL.format(block_key=block_id, handler_name='xmodule_handler'))
         problem_check_url = result.data["handler_url"] + 'problem_check'
