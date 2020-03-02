@@ -84,10 +84,11 @@ def load_block(usage_key, user):
     return runtime.get_block(usage_key)
 
 
-def get_block_metadata(block, includes=[]):
+def get_block_metadata(block, includes=()):
     """
     Get metadata about the specified XBlock.
-    Optionally provide a list of metadata keys to include. Valid keys are "index_dictionary" and "student_view_data".
+    Optionally provide a list or set of metadata keys to include. Valid keys are "index_dictionary" and
+    "student_view_data".
     """
     data = {
         "block_id": six.text_type(block.scope_ids.usage_id),

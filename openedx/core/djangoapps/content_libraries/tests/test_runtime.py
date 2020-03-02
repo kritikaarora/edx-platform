@@ -338,21 +338,32 @@ class ContentLibraryXBlockUserStateTest(ContentLibraryContentTestMixin, TestCase
         problem_key = "input_{}_2_1".format(block_id)
         self.assertIn(problem_key, student_view_result.data["content"])
 
-        # Now view the metadata through the api
-        metadata_view_result = client.get(URL_BLOCK_METADATA_URL.format(block_key=block_id))
+        # Now view the metadata through the api to check for sane data returned
+        metadata_view_result = client.get(
+            URL_BLOCK_METADATA_URL.format(block_key=block_id)
+        )
         self.assertEqual(block_id, metadata_view_result.data["block_id"])
         self.assertNotIn("index_dictionary", metadata_view_result.data)
         self.assertNotIn("student_view_data", metadata_view_result.data)
 
-        metadata_view_result = client.get(URL_BLOCK_METADATA_URL.format(block_key=block_id), {"include": "index_dictionary"})
+        metadata_view_result = client.get(
+            URL_BLOCK_METADATA_URL.format(block_key=block_id),
+            {"include": "index_dictionary"},
+        )
         self.assertIn("index_dictionary", metadata_view_result.data)
         self.assertNotIn("student_view_data", metadata_view_result.data)
 
-        metadata_view_result = client.get(URL_BLOCK_METADATA_URL.format(block_key=block_id), {"include": "student_view_data"})
+        metadata_view_result = client.get(
+            URL_BLOCK_METADATA_URL.format(block_key=block_id),
+            {"include": "student_view_data"},
+        )
         self.assertNotIn("index_dictionary", metadata_view_result.data)
         self.assertIn("student_view_data", metadata_view_result.data)
 
-        metadata_view_result = client.get(URL_BLOCK_METADATA_URL.format(block_key=block_id), {"include": "student_view_data,index_dictionary"})
+        metadata_view_result = client.get(
+            URL_BLOCK_METADATA_URL.format(block_key=block_id),
+            {"include": "student_view_data,index_dictionary"},
+        )
         self.assertIn("index_dictionary", metadata_view_result.data)
         self.assertIn("student_view_data", metadata_view_result.data)
 
