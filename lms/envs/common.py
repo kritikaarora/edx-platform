@@ -551,29 +551,7 @@ CACHES = {
     },
 }
 
-############################ OpenID Provider  ##################################
-OPENID_PROVIDER_TRUSTED_ROOTS = ['cs50.net', '*.cs50.net']
-
 ############################ OAUTH2 Provider ###################################
-
-# OpenID Connect issuer ID. Normally the URL of the authentication endpoint.
-
-OAUTH_OIDC_ISSUER = 'http://127.0.0.1:8000/oauth2'
-
-# OpenID Connect claim handlers
-
-OAUTH_OIDC_ID_TOKEN_HANDLERS = (
-    'edx_oauth2_provider.oidc.handlers.BasicIDTokenHandler',
-    'edx_oauth2_provider.oidc.handlers.ProfileHandler',
-    'edx_oauth2_provider.oidc.handlers.EmailHandler',
-)
-
-OAUTH_OIDC_USERINFO_HANDLERS = (
-    'edx_oauth2_provider.oidc.handlers.BasicUserInfoHandler',
-    'edx_oauth2_provider.oidc.handlers.ProfileHandler',
-    'edx_oauth2_provider.oidc.handlers.EmailHandler',
-)
-
 OAUTH_EXPIRE_CONFIDENTIAL_CLIENT_DAYS = 365
 OAUTH_EXPIRE_PUBLIC_CLIENT_DAYS = 30
 
@@ -615,20 +593,6 @@ OAUTH_ID_TOKEN_EXPIRATION = 60 * 60
 OAUTH_ENFORCE_SECURE = True
 OAUTH_EXPIRE_CONFIDENTIAL_CLIENT_DAYS = 365
 OAUTH_EXPIRE_PUBLIC_CLIENT_DAYS = 30
-
-
-# .. toggle_name: ENABLE_DOP_ADAPTER
-# .. toggle_implementation: DjangoSetting
-# .. toggle_default: True
-# .. toggle_description: A switch toggle for controlling whether or not we allow usage of the DOP OAuth adapter with the goal of removing the DOP adapter once we're confident it won't be used.
-# .. toggle_category: n/a
-# .. toggle_use_cases: incremental_release
-# .. toggle_creation_date: 2020-02-06
-# .. toggle_expiration_date: 2020-02-29
-# .. toggle_warnings: None
-# .. toggle_tickets: BOM-1160
-# .. toggle_status: supported
-ENABLE_DOP_ADAPTER = True
 
 ################################## THIRD_PARTY_AUTH CONFIGURATION #############################
 TPA_PROVIDER_BURST_THROTTLE = '10/min'
@@ -2307,11 +2271,6 @@ INSTALLED_APPS = [
     # Student support tools
     'support',
 
-    # django-oauth2-provider (deprecated)
-    'provider',
-    'provider.oauth2',
-    'edx_oauth2_provider',
-
     # django-oauth-toolkit
     'oauth2_provider',
     'openedx.core.djangoapps.oauth_dispatch.apps.OAuthDispatchAppConfig',
@@ -2518,6 +2477,9 @@ INSTALLED_APPS = [
 
     # Management of external user ids
     'openedx.core.djangoapps.external_user_ids',
+
+    # Management of per-user schedules
+    'openedx.core.djangoapps.schedules',
 ]
 
 ######################### CSRF #########################################
@@ -3151,7 +3113,6 @@ for app_name, insert_before in OPTIONAL_APPS:
 
 ### External auth usage -- prefixes for ENROLLMENT_DOMAIN
 SHIBBOLETH_DOMAIN_PREFIX = 'shib:'
-OPENID_DOMAIN_PREFIX = 'openid:'
 
 ### Analytics API
 ANALYTICS_API_KEY = ""

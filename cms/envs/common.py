@@ -311,7 +311,6 @@ FEATURES = {
     # Prevent auto auth from creating superusers or modifying existing users
     'RESTRICT_AUTOMATIC_AUTH': True,
 
-    'AUTH_USE_OPENID_PROVIDER': True,
     'ENABLE_INSTRUCTOR_ANALYTICS': False,
     'PREVIEW_LMS_BASE': "preview.localhost:18000",
     'ENABLE_GRADE_DOWNLOADS': True,
@@ -1357,11 +1356,6 @@ INSTALLED_APPS = [
     # Catalog integration
     'openedx.core.djangoapps.catalog',
 
-    # django-oauth2-provider (deprecated)
-    'provider',
-    'provider.oauth2',
-    'edx_oauth2_provider',
-
     # django-oauth-toolkit
     'oauth2_provider',
 
@@ -1433,6 +1427,9 @@ INSTALLED_APPS = [
 
     # signal handlers to capture course dates into edx-when
     'openedx.core.djangoapps.course_date_signals',
+
+    # Management of per-user schedules
+    'openedx.core.djangoapps.schedules',
 ]
 
 
@@ -1595,7 +1592,6 @@ for app_name, insert_before in OPTIONAL_APPS:
 
 ### External auth usage -- prefixes for ENROLLMENT_DOMAIN
 SHIBBOLETH_DOMAIN_PREFIX = 'shib:'
-OPENID_DOMAIN_PREFIX = 'openid:'
 
 # Set request limits for maximum size of a request body and maximum number of GET/POST parameters. (>=Django 1.10)
 # Limits are currently disabled - but can be used for finer-grained denial-of-service protection.
@@ -1831,8 +1827,6 @@ CACHES = {
 
 ############################ OAUTH2 Provider ###################################
 
-# OpenID Connect issuer ID. Normally the URL of the authentication endpoint.
-OAUTH_OIDC_ISSUER = 'http://127.0.0.1:8000/oauth2'
 
 # 5 minute expiration time for JWT id tokens issued for external API requests.
 OAUTH_ID_TOKEN_EXPIRATION = 5 * 60

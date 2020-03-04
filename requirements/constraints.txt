@@ -28,9 +28,6 @@ django-storages<1.9
 # Support was dropped for Python 3.5, Django 2.0, Django 2.1, DRF 3.7
 drf-yasg<1.17.1
 
-# BOM-1324: This constraint will be removed separately once 3.0.0 is out
-edx-drf-extensions<3.0.0
-
 # Upgrading to 2.12.0 breaks several test classes due to API changes, need to update our code accordingly
 factory-boy==2.8.1
 
@@ -77,5 +74,11 @@ oauthlib==2.1.0
 #   https://github.com/transifex/transifex-client/issues/252
 transifex-client==0.13.4
 
+# Constraint from astroid 2.3.3
+wrapt==1.11.*
+
 # zipp 2.0.0 requires Python >= 3.6
 zipp==1.0.0
+
+# It seems like django-countries > 5.5 may cause performance issues for us.
+django-countries==5.5

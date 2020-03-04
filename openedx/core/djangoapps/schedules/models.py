@@ -6,6 +6,7 @@ from django.db import models
 from django.utils.translation import ugettext_lazy as _
 from model_utils import Choices
 from model_utils.models import TimeStampedModel
+from simple_history.models import HistoricalRecords
 
 
 class Schedule(TimeStampedModel):
@@ -13,7 +14,7 @@ class Schedule(TimeStampedModel):
     .. no_pii:
     """
 
-    enrollment = models.OneToOneField('student.CourseEnrollment', null=False, on_delete=models.CASCADE)
+    enrollment = models.OneToOneField('student.CourseEnrollment', null=False, on_delete=models.CASCADE, db_constraint=False)
     active = models.BooleanField(
         default=True,
         help_text=_('Indicates if this schedule is actively used')
@@ -33,6 +34,7 @@ class Schedule(TimeStampedModel):
         null=True,
         help_text=_('Deadline by which the learner must upgrade to a verified seat')
     )
+    history = HistoricalRecords()
 
     def get_experience_type(self):
         try:
@@ -71,5 +73,5 @@ class ScheduleExperience(models.Model):
         (1, 'course_updates', u'Course Updates')
     )
 
-    schedule = models.OneToOneField(Schedule, related_name='experience', on_delete=models.CASCADE)
+    schedule = models.OneToOneField(Schedule, related_name='experience', on_delete=models.CASCADE, db_constraint=False)
     experience_type = models.PositiveSmallIntegerField(choices=EXPERIENCES, default=EXPERIENCES.default)
